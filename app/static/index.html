@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Reading Pen</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181c24; --line:#2a3140; --text:#f2f4f8; --muted:#93a0b5; --accent:#ffb703; --good:#39d353; --bad:#ff5d5d; --warn:#ffa640; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif; }
+  .wrap { display:grid; grid-template-columns: minmax(0,3fr) minmax(320px,2fr); gap:20px; padding:20px; max-width:1500px; margin:0 auto; }
+  @media (max-width:900px){ .wrap { grid-template-columns:1fr; } }
+  header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; letter-spacing:.3px; }
+  .pill { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid var(--line); color:var(--muted); margin-left:6px; }
+  .pill.ok { color:var(--good); border-color:var(--good); }
+  .pill.bad { color:var(--bad); border-color:var(--bad); }
+  .preview { position:relative; background:#000; border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
+  .preview img { width:100%; height:100%; object-fit:contain; display:block; }
+  .band { position:absolute; border:3px solid var(--accent); border-radius:8px; box-shadow:0 0 0 9999px rgba(0,0,0,.35); transition:border-color .15s; }
+  .band.stable { border-color:var(--good); }
+  .band.locked { border-color:var(--muted); }
+  .progress { position:absolute; left:0; right:0; bottom:0; height:6px; background:rgba(255,255,255,.12); }
+  .progress > div { height:100%; background:var(--good); width:0; transition:width .12s linear; }
+  .status { display:flex; align-items:center; gap:14px; margin-top:14px; }
+  .state { font-size:30px; font-weight:700; }
+  .state small { font-size:14px; color:var(--muted); font-weight:400; margin-left:8px; }
+  .hint { color:var(--warn); min-height:20px; margin-top:6px; }
+  .controls { display:flex; gap:12px; margin-top:14px; align-items:center; flex-wrap:wrap; }
+  button { background:#242a36; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:12px 18px; font-size:16px; cursor:pointer; }
+  button:hover { background:#2d3442; }
+  button.primary { background:var(--accent); color:#111; border-color:var(--accent); font-weight:700; font-size:22px; padding:16px 34px; }
+  button.primary:disabled { opacity:.45; cursor:not-allowed; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:12px 20px; }
+  .seg button.on { background:var(--accent); color:#111; font-weight:700; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .word { font-size:84px; line-height:1.15; text-align:center; font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:100px; }
+  .chunks { text-align:center; font-size:38px; color:var(--accent); font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:48px; }
+  .meta { display:flex; justify-content:center; gap:18px; color:var(--muted); font-size:14px; margin-top:8px; flex-wrap:wrap; }
+  .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
+  .review { text-align:center; font-size:12px; color:var(--muted); margin-top:6px; }
+  details { margin-top:18px; }
+  summary { cursor:pointer; color:var(--muted); }
+  .drawer { display:grid; gap:12px; margin-top:12px; font-size:14px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  select, input[type=file] { background:#242a36; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:14px; }
+  pre { background:#0b0d12; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:11px; overflow:auto; max-height:260px; margin:0; }
+  table { border-collapse:collapse; width:100%; font-size:12px; }
+  td, th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); }
+  .metric { font-variant-numeric:tabular-nums; }
+  .warn { color:var(--warn); }
+  .ok { color:var(--good); }
+  .bad { color:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Reading Pen <span class="pill" id="pill-ready">booting</span><span class="pill" id="pill-cam">camera</span><span class="pill" id="pill-ocr">ocr</span><span class="pill" id="pill-audio">audio</span></h1>
+  <div class="seg" id="lang">
+    <button data-lang="mr" class="on">मराठी Marathi</button>
+    <button data-lang="hi">हिंदी Hindi</button>
+  </div>
+</header>
+<div class="wrap">
+  <div>
+    <div class="preview">
+      <img id="preview" src="/preview.mjpg" alt="camera preview">
+      <div class="band" id="band"></div>
+      <div class="progress"><div id="progress"></div></div>
+    </div>
+    <div class="status">
+      <div class="state"><span id="state-label">Starting up</span><small id="state-detail"></small></div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="controls">
+      <button class="primary" id="btn-capture" title="Space">Capture</button>
+      <label class="row"><input type="checkbox" id="auto" checked> Auto-capture</label>
+      <button id="btn-cancel">Cancel / re-arm</button>
+      <button id="btn-replay">Replay audio</button>
+      <span class="label">Space = Capture</span>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <div class="label">Recognized word</div>
+      <div class="word" id="word">&nbsp;</div>
+      <div class="chunks" id="chunks">&nbsp;</div>
+      <div class="review" id="review"></div>
+      <div class="meta">
+        <span>Confidence <b id="conf">–</b></span>
+        <span>Audio <b id="audio-src">–</b></span>
+        <span>Trigger to audio <b id="t-audio">–</b></span>
+        <span id="override-flag" class="warn"></span>
+      </div>
+    </div>
+    <details class="panel">
+      <summary>Operator drawer</summary>
+      <div class="drawer">
+        <div class="row"><span class="label">Saved image</span>
+          <select id="fixture"></select><button id="btn-fixture">Load fixture</button>
+          <input type="file" id="file" accept="image/*"><button id="btn-file">Load file</button></div>
+        <div class="row"><span class="label">Manual lesson</span>
+          <select id="lesson"></select><button id="btn-override">Use lesson (override)</button></div>
+        <div class="row"><span class="label">OCR engine</span>
+          <select id="engine"><option value="paddle">PaddleOCR Devanagari v5</option><option value="tesseract">Tesseract mar/hin</option></select>
+          <button id="btn-engine">Switch</button></div>
+        <div class="row"><span class="label">Health</span><span id="health"></span></div>
+        <div class="row"><span class="label">Band metrics</span><span id="metrics" class="metric"></span></div>
+        <div class="row"><span class="label">Crops</span><a id="crop-link" href="#" target="_blank">latest crop</a> · <a id="full-link" href="#" target="_blank">latest frame</a></div>
+        <div><div class="label">Recent captures</div><table id="history"></table></div>
+        <div><div class="label">Latest trace</div><pre id="trace"></pre></div>
+      </div>
+    </details>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined}).then(r=>r.json());
+let lessons = [], curLang = 'mr', lastCaptureId = null;
+
+async function init() {
+  lessons = await fetch('/lessons').then(r=>r.json());
+  const fx = await fetch('/fixtures').then(r=>r.json());
+  $('fixture').innerHTML = fx.map(f=>`<option value="${f}">${f}</option>`).join('');
+  fillLessons();
+  poll();
+}
+function fillLessons() {
+  $('lesson').innerHTML = lessons.filter(l=>l.language===curLang).map(l=>`<option value="${l.id}">${l.card} ${l.word} (${l.display_prompt})</option>`).join('');
+}
+function pill(id, ok, text) { const p = $(id); p.textContent = text; p.className = 'pill ' + (ok===null?'':(ok?'ok':'bad')); }
+
+async function poll() {
+  try {
+    const s = await fetch('/state').then(r=>r.json());
+    render(s);
+  } catch (e) { $('state-label').textContent = 'Server not reachable'; }
+  setTimeout(poll, 150);
+}
+function render(s) {
+  // band overlay
+  const img = $('preview'), b = $('band');
+  const rect = img.getBoundingClientRect(), nw = img.naturalWidth||4, nh = img.naturalHeight||3;
+  const scale = Math.min(rect.width/nw, rect.height/nh), dw = nw*scale, dh = nh*scale, ox=(rect.width-dw)/2, oy=(rect.height-dh)/2;
+  b.style.left = (ox + s.crop.x*dw)+'px'; b.style.top = (oy + s.crop.y*dh)+'px';
+  b.style.width = (s.crop.w*dw)+'px'; b.style.height = (s.crop.h*dh)+'px';
+  b.className = 'band' + (s.state==='stabilizing' ? ' stable' : (['locked','speaking','processing','capturing'].includes(s.state) ? ' locked' : ''));
+  $('progress').style.width = (s.state==='stabilizing' ? s.dwell_progress*100 : (['locked','speaking'].includes(s.state)?100:0)) + '%';
+  $('state-label').textContent = s.label;
+  $('state-detail').textContent = s.state==='searching' && s.eligibility_reason!=='ok' ? s.eligibility_reason : (s.state==='stabilizing' ? s.stable_ms+' ms' : '');
+  $('hint').textContent = s.error ? s.error : (s.hint || '');
+  $('btn-capture').disabled = ['capturing','processing','speaking','booting'].includes(s.state) || !s.engine_ready;
+  if ($('auto').checked !== s.auto_enabled) $('auto').checked = s.auto_enabled;
+  if (curLang !== s.language) { curLang = s.language; fillLessons(); }
+  document.querySelectorAll('#lang button').forEach(x=>x.classList.toggle('on', x.dataset.lang===s.language));
+  pill('pill-ready', s.boot.ready && s.camera.connected, s.boot.ready ? (s.camera.connected?'ready':'ready (no camera)') : 'booting');
+  pill('pill-cam', s.camera.connected, s.camera.connected ? `camera ${s.camera.fps} fps` : 'camera offline');
+  pill('pill-ocr', s.engine_ready, s.engine_ready ? s.engine : 'loading '+s.engine);
+  pill('pill-audio', s.audio.playing ? true : null, s.audio.playing ? 'speaking' : 'audio idle');
+  const m = s.metrics||{};
+  $('metrics').textContent = `occ ${m.occupancy} (min ${s.thresholds.occupancy_min}) · sharp ${m.sharpness} (min ${s.thresholds.sharpness}) · exp ${m.exposure} · motion ${m.motion} (max ${s.thresholds.motion}) · ${s.eligibility_reason}`;
+  $('health').textContent = `camera ${s.camera.connected?'ok':'offline'} (${s.camera.frames} frames, ${s.camera.reconnects} reconnects${s.camera.error?', '+s.camera.error:''}) · engine ${s.engine_ready?'ready':'loading'} · boot ${s.boot.steps.map(x=>x.step+(x.ok?'✓':'✗')).join(' ')}`;
+  // result
+  const r = s.result||{};
+  if (r.capture_id !== lastCaptureId) {
+    lastCaptureId = r.capture_id;
+    if (r.lesson) {
+      $('word').textContent = r.lesson.word; $('chunks').textContent = r.lesson.display_prompt;
+      $('review').textContent = r.lesson.review_status==='approved_for_demo' ? 'Reviewed lesson' : 'Test expectation, not yet reviewed for children';
+    } else {
+      $('word').textContent = r.word || '—'; $('chunks').textContent = r.accepted ? '' : 'Not confident';
+      $('review').textContent = '';
+    }
+    $('conf').textContent = r.confidence==null ? '–' : (r.confidence*100).toFixed(1)+'%';
+    $('override-flag').textContent = r.override ? 'OPERATOR OVERRIDE (not OCR)' : '';
+    if (r.capture_id) { $('crop-link').href = `/debug/${r.capture_id}_crop.jpg`; $('full-link').href = `/debug/${r.capture_id}_full.jpg`; }
+  }
+  const t = s.trace||{};
+  $('audio-src').textContent = (r.audio && r.audio.source) ? r.audio.source : '–';
+  $('t-audio').textContent = t.timing_ms && t.timing_ms.first_audio!=null ? t.timing_ms.first_audio+' ms' : '–';
+  $('trace').textContent = t.capture_id ? JSON.stringify(t, null, 1) : '';
+  $('history').innerHTML = '<tr><th>id</th><th>src</th><th>word</th><th>ok</th><th>transfer</th><th>ocr</th><th>first audio</th></tr>' +
+    (s.history||[]).map(h=>`<tr><td>${h.capture_id}</td><td>${h.source}</td><td>${h.word||''}</td><td class="${h.accepted?'ok':'bad'}">${h.accepted?'✓':'✗'}</td><td>${h.timing_ms.transfer??''}</td><td>${h.timing_ms.ocr??''}</td><td>${h.timing_ms.first_audio??''}</td></tr>`).join('');
+}
+// controls
+$('btn-capture').onclick = () => post('/capture', {source:'button'});
+window.addEventListener('keydown', e => { if (e.code==='Space' && !['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)) { e.preventDefault(); post('/capture', {source:'space'}); } });
+$('auto').onchange = e => post('/auto', {enabled: e.target.checked});
+$('btn-cancel').onclick = () => post('/cancel');
+$('btn-replay').onclick = () => post('/replay');
+document.querySelectorAll('#lang button').forEach(x => x.onclick = () => post('/language', {language: x.dataset.lang}));
+$('btn-fixture').onclick = () => post('/load_fixture', {lesson_id: $('fixture').value});
+$('btn-file').onclick = async () => { const f = $('file').files[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); await fetch('/load_image', {method:'POST', body: fd}); };
+$('btn-override').onclick = () => post('/override', {lesson_id: $('lesson').value});
+$('btn-engine').onclick = () => post('/engine', {engine: $('engine').value});
+init();
+</script>
+</body>
+</html>

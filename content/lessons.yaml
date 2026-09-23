@@ -1,0 +1,247 @@
+# AI Reading Pen lesson manifest. Content, not generated state. UTF-8, NFC.
+# review_status: approved_for_demo = reviewed and used in the live demonstration.
+#                test_expectation  = chunks from the card-pack answer key; require educator approval before child use.
+version: "2026-09-23.1"
+lessons:
+  # ---------------- Marathi ----------------
+  - id: mr_ghar_v1
+    card: MR 01
+    language: mr
+    word: घर
+    teaching_chunks: [घ, र]
+    lesson_class: simple
+    display_prompt: "घ + र"
+    speech_script: "घर. घ आणि र. घर. आता तू वाच."
+    audio_asset: audio/mr_ghar_v1.wav
+    review_status: approved_for_demo
+  - id: mr_jhaad_v1
+    card: MR 02
+    language: mr
+    word: झाड
+    teaching_chunks: [झा, ड]
+    lesson_class: aa_matra
+    display_prompt: "झा + ड"
+    speech_script: "झाड. झा आणि ड. झाड. आता तू वाच."
+    audio_asset: audio/mr_jhaad_v1.wav
+    review_status: approved_for_demo
+  - id: mr_paani_v1
+    card: MR 03
+    language: mr
+    word: पाणी
+    teaching_chunks: [पा, णी]
+    lesson_class: long_vowels
+    display_prompt: "पा + णी"
+    speech_script: "पाणी. पा आणि णी. पाणी. आता तू वाच."
+    audio_asset: audio/mr_paani_v1.wav
+    review_status: test_expectation
+  - id: mr_sasa_v1
+    card: MR 04
+    language: mr
+    word: ससा
+    teaching_chunks: [स, सा]
+    lesson_class: simple
+    display_prompt: "स + सा"
+    speech_script: "ससा. स आणि सा. ससा. आता तू वाच."
+    audio_asset: audio/mr_sasa_v1.wav
+    review_status: test_expectation
+  - id: mr_mulga_v1
+    card: MR 05
+    language: mr
+    word: मुलगा
+    teaching_chunks: [मु, ल, गा]
+    lesson_class: mixed_matras
+    display_prompt: "मु + ल + गा"
+    speech_script: "मुलगा. मु, ल, गा. मुलगा. आता तू वाच."
+    audio_asset: audio/mr_mulga_v1.wav
+    review_status: test_expectation
+  - id: mr_chimni_v1
+    card: MR 06
+    language: mr
+    word: चिमणी
+    teaching_chunks: [चि, म, णी]
+    lesson_class: pre_base_i
+    display_prompt: "चि + म + णी"
+    speech_script: "चिमणी. चि, म, णी. चिमणी. आता तू वाच."
+    audio_asset: audio/mr_chimni_v1.wav
+    review_status: test_expectation
+  - id: mr_shaala_v1
+    card: MR 07
+    language: mr
+    word: शाळा
+    teaching_chunks: [शा, ळा]
+    lesson_class: marathi_la
+    display_prompt: "शा + ळा"
+    speech_script: "शाळा. शा आणि ळा. शाळा. आता तू वाच."
+    audio_asset: audio/mr_shaala_v1.wav
+    review_status: test_expectation
+  - id: mr_phulpakhru_v1
+    card: MR 08
+    language: mr
+    word: फुलपाखरू
+    teaching_chunks: [फु, ल, पा, ख, रू]
+    lesson_class: long_word
+    display_prompt: "फु + ल + पा + ख + रू"
+    speech_script: "फुलपाखरू. फु, ल, पा, ख, रू. फुलपाखरू. आता तू वाच."
+    audio_asset: audio/mr_phulpakhru_v1.wav
+    review_status: approved_for_demo
+  - id: mr_maajha_v1
+    card: MR 09
+    language: mr
+    word: माझं
+    teaching_chunks: [मा, झं]
+    lesson_class: anusvara
+    display_prompt: "मा + झं"
+    speech_script: "माझं. मा आणि झं. माझं. आता तू वाच."
+    audio_asset: audio/mr_maajha_v1.wav
+    review_status: test_expectation
+  - id: mr_mitra_v1
+    card: MR 10
+    language: mr
+    word: मित्र
+    teaching_chunks: [मि, त्र]
+    lesson_class: conjunct
+    display_prompt: "मि + त्र"
+    speech_script: "मित्र. मि आणि त्र. मित्र. आता तू वाच."
+    audio_asset: audio/mr_mitra_v1.wav
+    review_status: test_expectation
+  - id: mr_kshama_v1
+    card: MR 11
+    language: mr
+    word: क्षमा
+    teaching_chunks: [क्ष, मा]
+    lesson_class: conjunct
+    display_prompt: "क्ष + मा"
+    speech_script: "क्षमा. क्ष आणि मा. क्षमा. आता तू वाच."
+    audio_asset: audio/mr_kshama_v1.wav
+    review_status: test_expectation
+  - id: mr_dnyaan_v1
+    card: MR 12
+    language: mr
+    word: ज्ञान
+    teaching_chunks: [ज्ञा, न]
+    lesson_class: complex_conjunct
+    display_prompt: "ज्ञा + न"
+    speech_script: "ज्ञान. ज्ञा आणि न. ज्ञान. आता तू वाच."
+    audio_asset: audio/mr_dnyaan_v1.wav
+    review_status: test_expectation
+  # ---------------- Hindi ----------------
+  - id: hi_ghar_v1
+    card: HI 01
+    language: hi
+    word: घर
+    teaching_chunks: [घ, र]
+    lesson_class: simple
+    display_prompt: "घ + र"
+    speech_script: "घर. घ और र. घर. अब तुम पढ़ो."
+    audio_asset: audio/hi_ghar_v1.wav
+    review_status: test_expectation
+  - id: hi_kitaab_v1
+    card: HI 02
+    language: hi
+    word: किताब
+    teaching_chunks: [कि, ता, ब]
+    lesson_class: mixed_matras
+    display_prompt: "कि + ता + ब"
+    speech_script: "किताब. कि, ता, ब. किताब. अब तुम पढ़ो."
+    audio_asset: audio/hi_kitaab_v1.wav
+    review_status: approved_for_demo
+  - id: hi_paani_v1
+    card: HI 03
+    language: hi
+    word: पानी
+    teaching_chunks: [पा, नी]
+    lesson_class: long_vowels
+    display_prompt: "पा + नी"
+    speech_script: "पानी. पा और नी. पानी. अब तुम पढ़ो."
+    audio_asset: audio/hi_paani_v1.wav
+    review_status: test_expectation
+  - id: hi_kamal_v1
+    card: HI 04
+    language: hi
+    word: कमल
+    teaching_chunks: [क, म, ल]
+    lesson_class: simple
+    display_prompt: "क + म + ल"
+    speech_script: "कमल. क, म, ल. कमल. अब तुम पढ़ो."
+    audio_asset: audio/hi_kamal_v1.wav
+    review_status: test_expectation
+  - id: hi_sangeet_v1
+    card: HI 05
+    language: hi
+    word: संगीत
+    teaching_chunks: [सं, गी, त]
+    lesson_class: anusvara
+    display_prompt: "सं + गी + त"
+    speech_script: "संगीत. सं, गी, त. संगीत. अब तुम पढ़ो."
+    audio_asset: audio/hi_sangeet_v1.wav
+    review_status: test_expectation
+  - id: hi_bachcha_v1
+    card: HI 06
+    language: hi
+    word: बच्चा
+    teaching_chunks: [ब, च्चा]
+    lesson_class: geminate_conjunct
+    display_prompt: "ब + च्चा"
+    speech_script: "बच्चा. ब और च्चा. बच्चा. अब तुम पढ़ो."
+    audio_asset: audio/hi_bachcha_v1.wav
+    review_status: test_expectation
+  - id: hi_school_v1
+    card: HI 07
+    language: hi
+    word: स्कूल
+    teaching_chunks: [स्कू, ल]
+    lesson_class: loanword_conjunct
+    display_prompt: "स्कू + ल"
+    speech_script: "स्कूल. स्कू और ल. स्कूल. अब तुम पढ़ो."
+    audio_asset: audio/hi_school_v1.wav
+    review_status: test_expectation
+  - id: hi_kripaya_v1
+    card: HI 08
+    language: hi
+    word: कृपया
+    teaching_chunks: [कृ, प, या]
+    lesson_class: vocalic_r
+    display_prompt: "कृ + प + या"
+    speech_script: "कृपया. कृ, प, या. कृपया. अब तुम पढ़ो."
+    audio_asset: audio/hi_kripaya_v1.wav
+    review_status: test_expectation
+  - id: hi_prakash_v1
+    card: HI 09
+    language: hi
+    word: प्रकाश
+    teaching_chunks: [प्र, का, श]
+    lesson_class: conjunct
+    display_prompt: "प्र + का + श"
+    speech_script: "प्रकाश. प्र, का, श. प्रकाश. अब तुम पढ़ो."
+    audio_asset: audio/hi_prakash_v1.wav
+    review_status: test_expectation
+  - id: hi_shraddha_v1
+    card: HI 10
+    language: hi
+    word: श्रद्धा
+    teaching_chunks: [श्र, द्धा]
+    lesson_class: complex_conjunct
+    display_prompt: "श्र + द्धा"
+    speech_script: "श्रद्धा. श्र और द्धा. श्रद्धा. अब तुम पढ़ो."
+    audio_asset: audio/hi_shraddha_v1.wav
+    review_status: test_expectation
+  - id: hi_swatantra_v1
+    card: HI 11
+    language: hi
+    word: स्वतंत्र
+    teaching_chunks: [स्व, तं, त्र]
+    lesson_class: multiple_conjuncts
+    display_prompt: "स्व + तं + त्र"
+    speech_script: "स्वतंत्र. स्व, तं, त्र. स्वतंत्र. अब तुम पढ़ो."
+    audio_asset: audio/hi_swatantra_v1.wav
+    review_status: test_expectation
+  - id: hi_gyaan_v1
+    card: HI 12
+    language: hi
+    word: ज्ञान
+    teaching_chunks: [ज्ञा, न]
+    lesson_class: complex_conjunct
+    display_prompt: "ज्ञा + न"
+    speech_script: "ज्ञान. ज्ञा और न. ज्ञान. अब तुम पढ़ो."
+    audio_asset: audio/hi_gyaan_v1.wav
+    review_status: test_expectation
