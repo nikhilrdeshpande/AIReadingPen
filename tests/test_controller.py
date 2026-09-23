@@ -105,9 +105,9 @@ def test_auto_capture_fires_once_and_rearms_on_change(ctl):
     img = frame_with_word("घर")
     feed(cam, img, 0.8)                       # held still: should fire exactly once
     assert wait_state(c, {"locked"}, 2.0), c.state
-    assert c.engine.calls == 1
+    assert c.engine.calls == 2                # one capture = two reads (upright + rotated 180)
     feed(cam, img, 1.5)                       # still held: no second capture
-    assert c.engine.calls == 1 and c.state == "locked"
+    assert c.engine.calls == 2 and c.state == "locked"
     feed(cam, frame_with_word("", blank=True), 0.5)   # card removed: re-arm
     assert wait_state(c, {"searching", "stabilizing"}, 1.0), c.state
     assert c.last_result["lesson"]["id"] == "mr_ghar_v1"
@@ -129,7 +129,7 @@ def test_manual_capture_bypasses_dwell_and_blocks_double_fire(ctl):
     r2 = c.capture(source="button")
     assert r1["ok"] and not r2["ok"]
     assert wait_state(c, {"locked"}, 2.0)
-    assert c.engine.calls == 1
+    assert c.engine.calls == 2                # exactly one capture (two orientation reads)
     assert c.last_trace["trigger"]["source"] == "space"
 
 

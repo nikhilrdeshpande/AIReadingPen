@@ -259,7 +259,8 @@ class CaptureController:
             if ocr_in is None:
                 result = {"engine": self.engine.name if self.engine else "none", "raw_text": "", "candidates": [], "latency_ms": 0}
             else:
-                result = self.engine.recognize(ocr_in, self.language)  # type: ignore[union-attr]
+                result, rotated = self._recognize_any_orientation(ocr_in)
+                trace["orientation"] = "rotated_180" if rotated else "upright"
             trace["timing_ms"]["ocr"] = result["latency_ms"]
             # 4. gate
             gate = evaluate(result, self.language, self.manifest, settings.ocr_confidence_threshold)
@@ -285,6 +286,23 @@ class CaptureController:
             self._publish(trace, None)
             self._set_state("needs_recapture")
             self.hint = "Camera problem. Use Capture again or load a saved image."
+
+    def _recognize_any_orientation(self, ocr_in: np.ndarray):
+        """A handheld camera is often turned 180 degrees relative to the card. Read both ways and keep the
+        better one: an exact manifest match wins, else the higher confidence. Costs one extra ~50 ms read."""
+        r1 = self.engine.recognize(ocr_in, self.language)  # type: ignore[union-attr]
+        r2 = self.engine.recognize(cv2.rotate(ocr_in, cv2.ROTATE_180), self.language)  # type: ignore[union-attr]
+        def score(r):
+            if not r["candidates"]:
+                return (-1, 0.0)
+            c = r["candidates"][0]
+            exact = self.manifest.lookup(self.language, normalize(c["text"])) is not None
+            return (1 if exact else 0, c["confidence"] or 0.0)
+        if score(r2) > score(r1):
+            r2["latency_ms"] += r1["latency_ms"]
+            return r2, True
+        r1["latency_ms"] += r2["latency_ms"]
+        return r1, False
 
     def _finish(self, trace: Trace, gate: GateDecision) -> None:
         if not gate.accepted or gate.lesson is None:

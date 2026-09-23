@@ -39,8 +39,8 @@ def metrics(gray: np.ndarray, prev_gray: np.ndarray | None) -> BandMetrics:
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     exposure = float(gray.mean())
     # ink = pixels clearly darker than the local paper level
-    thr, _ = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    ink = (blur < min(thr, exposure - 25)).mean() if exposure > 40 else (blur < thr).mean()
+    block = max(31, (min(gray.shape[:2]) // 3) | 1)
+    ink = (cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block, 12) > 0).mean()
     sharp = float(cv2.Laplacian(blur, cv2.CV_64F).var())
     motion = 0.0
     if prev_gray is not None and prev_gray.shape == gray.shape:
@@ -49,9 +49,12 @@ def metrics(gray: np.ndarray, prev_gray: np.ndarray | None) -> BandMetrics:
 
 
 def _binary(band: np.ndarray) -> np.ndarray:
+    """Ink mask that survives shading: a local (adaptive) threshold, so a shadow or paper gradient across the
+    band is not classified as one huge ink blob the way a global Otsu threshold does."""
     g = band if band.ndim == 2 else cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(g, (5, 5), 0)
-    _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    block = max(31, (min(g.shape[:2]) // 3) | 1)
+    binary = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block, 12)
     return cv2.morphologyEx(binary, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
 
 
