@@ -28,6 +28,12 @@ class TesseractEngine:
         lang = "mar" if language == "mr" else "hin"
         t0 = time.perf_counter()
         gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Tesseract's confidence on short words is unstable on tight crops: give it ~128 px x-height and a wide white margin.
+        h, w = gray.shape[:2]
+        if h != 128:
+            s = 128 / h
+            gray = cv2.resize(gray, (max(8, int(w * s)), 128), interpolation=cv2.INTER_CUBIC if s > 1 else cv2.INTER_AREA)
+        gray = cv2.copyMakeBorder(gray, 32, 32, 32, 32, cv2.BORDER_CONSTANT, value=255)
         data = pytesseract.image_to_data(gray, lang=lang, config=self._cfg, output_type=pytesseract.Output.DICT)
         words, confs = [], []
         for txt, conf in zip(data["text"], data["conf"]):

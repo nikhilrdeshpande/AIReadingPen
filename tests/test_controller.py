@@ -138,8 +138,11 @@ def test_language_switch_blocked_during_lesson_and_override_marked(ctl):
     feed(cam, frame_with_word("घर"), 0.4)
     r = c.override("mr_jhaad_v1")
     assert r["ok"]
-    assert wait_state(c, {"locked", "operator_recovery"}, 2.0)
+    t = time.time() + 2.0
+    while time.time() < t and not (c.last_trace and c.last_trace["gate"].get("override")):
+        time.sleep(0.01)
     assert c.last_trace["gate"]["override"] is True
+    assert wait_state(c, {"locked"}, 2.0)
     assert c.override("hi_kitaab_v1")["ok"] is False   # language mismatch
     assert c.set_language("hi")["ok"]                   # allowed when not speaking
 
