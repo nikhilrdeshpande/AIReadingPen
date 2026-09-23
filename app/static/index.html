@@ -117,7 +117,9 @@
 <script>
 const $ = id => document.getElementById(id);
 const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined}).then(r=>r.json());
-let lessons = [], curLang = 'mr', lastCaptureId = null;
+let lessons = [], curLang = 'mr', lastCaptureId = null, bootStarted = null, lastFrames = -1, stallTicks = 0;
+function reconnectPreview() { const i = $('preview'); i.src = '/preview.mjpg?t=' + Date.now(); }
+$('preview').onerror = () => setTimeout(reconnectPreview, 1000);
 
 async function init() {
   lessons = await fetch('/lessons').then(r=>r.json());
@@ -148,6 +150,10 @@ function render(s) {
   b.className = 'band' + (s.state==='stabilizing' ? ' stable' : (['locked','speaking','processing','capturing'].includes(s.state) ? ' locked' : ''));
   $('progress').style.width = (s.state==='stabilizing' ? s.dwell_progress*100 : (['locked','speaking'].includes(s.state)?100:0)) + '%';
   img.style.transform = (s.mirror && s.mirror.h ? 'scaleX(-1) ' : '') + (s.mirror && s.mirror.v ? 'scaleY(-1)' : '');
+  if (bootStarted !== null && s.boot.started !== bootStarted) reconnectPreview();   // server restarted
+  bootStarted = s.boot.started;
+  if (s.camera.connected) { stallTicks = (s.camera.frames === lastFrames) ? stallTicks + 1 : 0; lastFrames = s.camera.frames;
+    if (stallTicks === 20 || (img.complete && img.naturalWidth === 0 && stallTicks % 20 === 10)) reconnectPreview(); }
   $('state-label').textContent = s.label;
   $('state-detail').textContent = s.state==='searching' && s.eligibility_reason!=='ok' ? s.eligibility_reason : (s.state==='stabilizing' ? s.stable_ms+' ms' : '');
   $('hint').textContent = s.error ? s.error : (s.hint || '');
