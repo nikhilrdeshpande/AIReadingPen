@@ -48,21 +48,58 @@ def metrics(gray: np.ndarray, prev_gray: np.ndarray | None) -> BandMetrics:
     return BandMetrics(float(ink), sharp, exposure, motion)
 
 
-def tight_crop(band: np.ndarray, pad_frac: float = 0.25, min_ink_px: int = 30) -> np.ndarray | None:
-    """Crop to the bounding box of the ink in the band, with padding. None if there is no ink."""
+def _binary(band: np.ndarray) -> np.ndarray:
     g = band if band.ndim == 2 else cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(g, (5, 5), 0)
-    thr, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    # remove specks so a dust mark cannot define the box
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    ys, xs = np.where(binary > 0)
-    if len(ys) < min_ink_px:
+    _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    return cv2.morphologyEx(binary, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+
+def text_box(band: np.ndarray, min_area: int = 30) -> tuple[int, int, int, int] | None:
+    """Bounding box (x0, y0, x1, y1) of the text-like ink only. Drops background regions (large blobs that
+    touch two or more band edges, e.g. the desk or a shadow), thin lines (card border) and specks."""
+    binary = _binary(band)
+    H, W = binary.shape
+    n, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    boxes = []
+    for k in range(1, n):
+        x, y, w, h, area = stats[k]
+        if area < min_area:
+            continue
+        touches = (x == 0) + (y == 0) + (x + w >= W) + (y + h >= H)
+        if touches >= 2 and area > 0.08 * H * W:
+            continue                                   # background: desk, shadow, page edge
+        if (h <= 4 and w > 6 * h) or (w <= 4 and h > 6 * w):
+            continue                                   # thin line: card border, fold
+        if h >= 0.98 * H and w >= 0.98 * W:
+            continue
+        boxes.append((x, y, x + w, y + h))
+    if not boxes:
         return None
-    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
-    ph = int((y1 - y0 + 1) * pad_frac) + 4
-    pw = int((y1 - y0 + 1) * pad_frac) + 4
-    H, W = g.shape[:2]
-    return band[max(0, y0 - ph):min(H, y1 + ph + 1), max(0, x0 - pw):min(W, x1 + pw + 1)]
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def tight_crop(band: np.ndarray, pad_frac: float = 0.25, min_ink_px: int = 30) -> np.ndarray | None:
+    """Crop to the text box with padding. None if there is no text-like ink."""
+    box = text_box(band)
+    if box is None:
+        return None
+    x0, y0, x1, y1 = box
+    H, W = band.shape[:2]
+    ph = int((y1 - y0) * pad_frac) + 4
+    pw = ph
+    return band[max(0, y0 - ph):min(H, y1 + ph), max(0, x0 - pw):min(W, x1 + pw)]
+
+
+def ink_touches_edges(band: np.ndarray, margin: int = 2) -> dict:
+    """Which band edges the text box touches: top/bottom means the word is cut off by the band,
+    left/right means it is not fully inside. Background blobs and lines are ignored (see text_box)."""
+    H, W = band.shape[:2]
+    box = text_box(band)
+    if box is None:
+        return {"top": False, "bottom": False, "left": False, "right": False}
+    x0, y0, x1, y1 = box
+    return {"top": y0 <= margin, "bottom": y1 >= H - margin, "left": x0 <= margin, "right": x1 >= W - margin}
 
 
 def prepare_for_ocr(band: np.ndarray, target_height: int = 96) -> np.ndarray | None:
@@ -82,14 +119,3 @@ def prepare_for_ocr(band: np.ndarray, target_height: int = 96) -> np.ndarray | N
     return cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
 
 
-
-def ink_touches_edges(band: np.ndarray, margin: int = 2) -> dict:
-    """Which band edges the ink touches. A word touching top/bottom is cut off by the band; left/right means
-    it is not fully inside. Used to refuse captures of partial words (the source of fragments like आड for झाड)."""
-    g = band if band.ndim == 2 else cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(g, (5, 5), 0)
-    _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    H, W = binary.shape
-    return {"top": bool(binary[:margin + 1].any()), "bottom": bool(binary[H - margin - 1:].any()),
-            "left": bool(binary[:, :margin + 1].any()), "right": bool(binary[:, W - margin - 1:].any())}
