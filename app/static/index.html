@@ -147,6 +147,7 @@ function render(s) {
   b.style.width = (s.crop.w*dw)+'px'; b.style.height = (s.crop.h*dh)+'px';
   b.className = 'band' + (s.state==='stabilizing' ? ' stable' : (['locked','speaking','processing','capturing'].includes(s.state) ? ' locked' : ''));
   $('progress').style.width = (s.state==='stabilizing' ? s.dwell_progress*100 : (['locked','speaking'].includes(s.state)?100:0)) + '%';
+  img.style.transform = (s.mirror && s.mirror.h ? 'scaleX(-1) ' : '') + (s.mirror && s.mirror.v ? 'scaleY(-1)' : '');
   $('state-label').textContent = s.label;
   $('state-detail').textContent = s.state==='searching' && s.eligibility_reason!=='ok' ? s.eligibility_reason : (s.state==='stabilizing' ? s.stable_ms+' ms' : '');
   $('hint').textContent = s.error ? s.error : (s.hint || '');

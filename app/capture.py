@@ -17,7 +17,7 @@ import numpy as np
 
 from . import preprocess
 from .audio import AudioPlayer
-from .camera import CameraClient, decode_jpeg
+from .camera import CameraClient, decode_jpeg, orient
 from .config import settings
 from .gate import GateDecision, evaluate
 from .manifest import Lesson, Manifest
@@ -105,6 +105,7 @@ class CaptureController:
             img = decode_jpeg(jpg)
             if img is None:
                 continue
+            img = orient(img, settings.camera_hmirror, settings.camera_vflip)
             band = preprocess.band_crop(img, self.crop)
             gray = preprocess.analysis_gray(band)
             m = preprocess.metrics(gray, self._prev_gray)
@@ -220,12 +221,14 @@ class CaptureController:
             img = decode_jpeg(image_bytes)
             if img is None:
                 raise RuntimeError("could not decode image")
+            full_crop = (image_source or "xiao").startswith("xiao")
+            if full_crop:
+                img = orient(img, settings.camera_hmirror, settings.camera_vflip)
             if settings.debug_save_frames:
                 d = Path(settings.debug_dir); d.mkdir(parents=True, exist_ok=True)
                 (d / f"{cid}_full.jpg").write_bytes(image_bytes)
             # 2. crop + preprocess (saved images are already crops if they are small)
             t0 = time.perf_counter()
-            full_crop = trace["image_source"] in ("xiao_snapshot", "xiao_preview_frame")
             band = preprocess.band_crop(img, self.crop) if full_crop else img
             ocr_in = preprocess.prepare_for_ocr(band)
             trace["timing_ms"]["preprocess"] = int((time.perf_counter() - t0) * 1000)
@@ -349,6 +352,7 @@ class CaptureController:
                 "stable_ms": self.stable_ms, "dwell_progress": round(self.dwell_progress, 3),
                 "dwell_target_ms": settings.stable_dwell_ms, "metrics": self.metrics,
                 "hint": self.hint, "error": self.error, "crop": self.crop,
+                "mirror": {"h": settings.camera_hmirror, "v": settings.camera_vflip},
                 "result": self.last_result, "trace": self.last_trace, "history": self.history[:10],
                 "audio": {"playing": self.audio.playing, "source": self.audio.last_source, "asset": self.audio.last_asset},
                 "camera": self.camera.health.to_dict(),

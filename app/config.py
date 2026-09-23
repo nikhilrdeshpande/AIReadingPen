@@ -47,6 +47,8 @@ class Settings:
     camera_snapshot_url: str = os.environ.get("CAMERA_SNAPSHOT_URL", "http://localhost:8080/capture")
     camera_status_url: str = os.environ.get("CAMERA_STATUS_URL", "")
     camera_timeout_s: float = _f("CAMERA_TIMEOUT_S", 3.0)
+    camera_hmirror: bool = _b("CAMERA_HMIRROR", True)   # XIAO Sense on its stand produces a mirrored image
+    camera_vflip: bool = _b("CAMERA_VFLIP", False)
 
     demo_language: str = os.environ.get("DEMO_LANGUAGE", "mr")
     auto_capture_enabled: bool = _b("AUTO_CAPTURE_ENABLED", True)

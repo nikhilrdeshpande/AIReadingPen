@@ -35,6 +35,17 @@ def decode_jpeg(jpg: bytes) -> np.ndarray | None:
     return img
 
 
+def orient(img: np.ndarray, hmirror: bool, vflip: bool) -> np.ndarray:
+    """Apply the configured mirror/flip so text reads correctly. Cheap: only sampled bands and snapshots go through it."""
+    if hmirror and vflip:
+        return cv2.flip(img, -1)
+    if hmirror:
+        return cv2.flip(img, 1)
+    if vflip:
+        return cv2.flip(img, 0)
+    return img
+
+
 class CameraClient:
     def __init__(self, preview_url: str, snapshot_url: str, status_url: str = "", timeout_s: float = 3.0):
         self.preview_url = preview_url
