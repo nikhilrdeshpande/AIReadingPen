@@ -63,14 +63,17 @@ def text_box(band: np.ndarray, min_area: int = 30) -> tuple[int, int, int, int] 
     n, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
     boxes = []
     for k in range(1, n):
-        x, y, w, h, area = stats[k]
+        x, y, w, h, area = (int(v) for v in stats[k])
         if area < min_area:
             continue
-        touches = (x == 0) + (y == 0) + (x + w >= W) + (y + h >= H)
-        if touches >= 2 and area > 0.08 * H * W:
-            continue                                   # background: desk, shadow, page edge
-        if (h <= 4 and w > 6 * h) or (w <= 4 and h > 6 * w):
-            continue                                   # thin line: card border, fold
+        touches = int(x == 0) + int(y == 0) + int(x + w >= W) + int(y + h >= H)
+        frac = area / (H * W)
+        if touches >= 2 and frac > 0.015:
+            continue                                   # background: desk corner, shadow, page edge
+        if touches >= 1 and frac < 0.01:
+            continue                                   # edge debris: card border fragment, fold
+        if (h <= 4 and w > 6 * h) or (w <= 4 and h > 6 * w) or area / (w * h) < 0.08:
+            continue                                   # thin or diagonal line
         if h >= 0.98 * H and w >= 0.98 * W:
             continue
         boxes.append((x, y, x + w, y + h))
