@@ -66,3 +66,9 @@ and above a moving one, `MOTION_THRESHOLD` just above the idle jitter. Restart t
 .venv/bin/python -m pytest          # unit + controller tests with a fake camera, no model download
 .venv/bin/python scripts/bench_cards.py fixtures
 ```
+
+## License
+
+MIT, see `LICENSE`. Lesson content in `content/` and the docs in `docs/` are part of the same repository and
+license. Cached audio was generated with Sarvam AI Bulbul v3; OCR uses PaddleOCR (Apache 2.0) and Tesseract
+(Apache 2.0). Bring your own API keys; none are included.
