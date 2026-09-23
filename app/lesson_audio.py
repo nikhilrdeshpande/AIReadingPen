@@ -76,7 +76,17 @@ def template_segments(lesson: Lesson) -> list[Segment]:
 
 
 def barakhadi_segments(lesson: Lesson) -> list[Segment]:
-    """Traditional drill: word | 'झ ला काना, झा. ड. झा, ड.' | word | your turn."""
+    """Traditional drill: word | 'झ ला काना, झा। ड। झा, ड।' | word | your turn.
+    A phrase lesson chains each word's drill: phrase | word, drill | word, drill | phrase | your turn."""
+    if lesson.parts:
+        segs = [Segment(f"{lesson.word}.", PACE, GAP)]
+        for part in lesson.parts:
+            sub = barakhadi_segments(part)
+            segs.append(Segment(sub[0].text, PACE, GAP - 150))
+            segs.append(Segment(sub[1].text, PACE, GAP))
+        segs.append(Segment(f"{lesson.word}.", PACE, GAP))
+        segs.append(Segment(_prompt(lesson.language), PACE, 0))
+        return segs
     word, chunks = lesson.word, lesson.teaching_chunks
     lines = []
     for c in chunks:

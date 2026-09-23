@@ -139,4 +139,5 @@ def test_phrase_of_pack_words(manifest, monkeypatch):
     d2 = evaluate(_res("घर झड", conf=0.95), "mr", manifest, 0.8)
     assert not d2.accepted and "झड" in d2.hint
     from app.lesson_audio import barakhadi_segments
-    assert [s.text for s in barakhadi_segments(d.lesson)][0] == "घर झाड."
+    texts = [s.text for s in barakhadi_segments(d.lesson)]
+    assert texts == ["घर झाड.", "घर.", "घ। र। घ, र।", "झाड.", "झ ला काना, झा। ड। झा, ड।", "घर झाड.", "आता तू म्हण."]
