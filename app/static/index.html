@@ -86,6 +86,7 @@
       <button class="primary" id="btn-capture" title="Space">Capture</button>
       <label class="row"><input type="checkbox" id="auto" checked> Auto-capture</label>
       <label class="row"><input type="checkbox" id="practice" checked> Your turn (mic)</label>
+      <span class="label" id="mic-name">mic: …</span>
       <button id="btn-cancel">Cancel / re-arm</button>
       <button id="btn-replay">Replay audio</button>
       <span class="label">Space = Capture</span>
@@ -117,6 +118,7 @@
         <div class="row"><span class="label">OCR engine</span>
           <select id="engine"><option value="paddle">PaddleOCR Devanagari v5</option><option value="tesseract">Tesseract mar/hin</option></select>
           <button id="btn-engine">Switch</button></div>
+        <div class="row"><span class="label">Microphone</span><span id="mic-drawer"></span><button id="btn-mic">Test mic (1 s)</button><span id="mic-result"></span></div>
         <div class="row"><span class="label">Settings</span><button id="btn-reload">Reload .env (thresholds, band)</button><span id="reload-msg"></span></div>
         <div class="row"><span class="label">Health</span><span id="health"></span></div>
         <div class="row"><span class="label">Band metrics</span><span id="metrics" class="metric"></span></div>
@@ -174,6 +176,7 @@ function render(s) {
   $('btn-capture').disabled = ['capturing','processing','speaking','booting'].includes(s.state) || !s.engine_ready;
   if ($('auto').checked !== s.auto_enabled) $('auto').checked = s.auto_enabled;
   if ($('practice').checked !== s.practice_enabled) $('practice').checked = s.practice_enabled;
+  $('mic-name').textContent = 'mic: ' + (s.mic || 'none'); $('mic-drawer').textContent = s.mic || 'none';
   const pr = s.practice, pb = $('practice-box');
   if (!pr) { pb.textContent = ''; pb.className = 'practice'; }
   else if (pr.status === 'listening') { pb.innerHTML = '🎤 Your turn: say <span class="heard">' + pr.target + '</span>'; pb.className = 'practice listening'; }
@@ -227,6 +230,7 @@ $('btn-fixture').onclick = () => post('/load_fixture', {lesson_id: $('fixture').
 $('btn-file').onclick = async () => { const f = $('file').files[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); await fetch('/load_image', {method:'POST', body: fd}); };
 $('btn-override').onclick = () => post('/override', {lesson_id: $('lesson').value});
 $('btn-engine').onclick = () => post('/engine', {engine: $('engine').value});
+$('btn-mic').onclick = async () => { $('mic-result').textContent = 'recording…'; const r = await post('/mic_test'); $('mic-result').textContent = r.ok ? `peak ${r.peak} (${r.verdict}) on ${r.device}` : 'error: ' + r.error; };
 $('btn-reload').onclick = async () => { const r = await post('/reload'); $('reload-msg').textContent = 'changed: ' + (Object.keys(r.changed).join(', ') || 'nothing'); };
 init();
 </script>

@@ -24,6 +24,26 @@ def pick_input_device() -> int | None:
     return None   # system default
 
 
+def mic_name() -> str:
+    try:
+        import sounddevice as sd
+        dev = pick_input_device()
+        d = sd.query_devices(dev if dev is not None else sd.default.device[0])
+        return d["name"] + ("" if dev is not None else " (system default)")
+    except Exception as e:  # noqa: BLE001
+        return f"no microphone ({e})"
+
+
+def mic_test(seconds: float = 1.0) -> dict:
+    """Record briefly and report the peak level so the operator can confirm the mic is live."""
+    try:
+        _, peak = record(seconds)
+        return {"ok": True, "device": mic_name(), "peak": round(peak, 3),
+                "verdict": "silent" if peak < 0.01 else ("quiet" if peak < 0.05 else "ok")}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "device": mic_name(), "error": str(e)[:160]}
+
+
 def record(seconds: float, rate: int = 16000) -> tuple[bytes, float]:
     """Record mono 16-bit WAV from the microphone. Returns (wav_bytes, peak_level 0..1)."""
     import sounddevice as sd

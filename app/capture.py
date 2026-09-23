@@ -17,6 +17,7 @@ import numpy as np
 
 from . import preprocess
 from .audio import AudioPlayer
+from . import lesson_audio, practice
 from .camera import CameraClient, decode_jpeg, orient
 from .config import settings
 from .gate import GateDecision, evaluate
@@ -324,7 +325,6 @@ class CaptureController:
 
     def _practice(self, trace: Trace, lesson: Lesson, finish) -> None:
         """Record the child, transcribe, compare, give spoken feedback. Never blocks the preview loop."""
-        from . import lesson_audio, practice
         self._set_state("listening")
         self.practice = {"status": "listening", "target": lesson.word}
         try:
@@ -425,7 +425,7 @@ class CaptureController:
                 "stable_ms": self.stable_ms, "dwell_progress": round(self.dwell_progress, 3),
                 "dwell_target_ms": settings.stable_dwell_ms, "metrics": self.metrics,
                 "hint": self.hint, "error": self.error, "crop": self.crop,
-                "practice_enabled": self.practice_enabled, "practice": self.practice,
+                "practice_enabled": self.practice_enabled, "practice": self.practice, "mic": practice.mic_name(),
                 "mirror": {"h": settings.camera_hmirror, "v": settings.camera_vflip},
                 "result": self.last_result, "trace": self.last_trace, "history": self.history[:10],
                 "audio": {"playing": self.audio.playing, "source": self.audio.last_source, "asset": self.audio.last_asset},

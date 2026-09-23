@@ -151,6 +151,12 @@ def practice_toggle(body: Auto):
     return {"ok": True, "practice_enabled": ctl.practice_enabled}
 
 
+@app.post("/mic_test")
+def mic_test():
+    from .practice import mic_test as _mt
+    return _mt(1.0)
+
+
 @app.post("/engine")
 def engine(body: Engine):
     if body.engine not in ("paddle", "tesseract"):
