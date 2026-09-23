@@ -264,12 +264,16 @@ class CaptureController:
     def _speak(self, trace: Trace, lesson: Lesson) -> None:
         trace["lesson_id"] = lesson.id
         trace.mark("lesson")
+        self._publish(trace, lesson)          # word + chunks visible before audio starts
         self._set_state("speaking")
 
         def done():
             trace.mark("audio_end")
             trace.save(settings.trace_dir)
-            self._set_state("locked")
+            if self.camera.health.to_dict().get("connected"):
+                self._set_state("locked")     # camera decides when to re-arm (card removed / changed)
+            else:
+                self._rearm()                 # no camera: saved-image replay path re-arms itself
         t0 = time.perf_counter()
         audio = self.audio.speak_lesson(lesson, on_done=done)
         trace["audio"] = audio
