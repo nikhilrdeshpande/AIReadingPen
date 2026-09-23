@@ -107,5 +107,22 @@ class Settings:
     def crop_box(self) -> dict:
         return {"x": self.crop_x, "y": self.crop_y, "w": self.crop_w, "h": self.crop_h}
 
+    def reload(self) -> dict:
+        """Re-read .env (overriding, not just defaulting) and return the fields that changed."""
+        path = ROOT / ".env"
+        if path.exists():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ[k.strip()] = v.strip().strip('"').strip("'")
+        fresh = Settings()
+        changed = {}
+        for k, v in vars(fresh).items():
+            if getattr(self, k) != v:
+                changed[k] = v
+                setattr(self, k, v)
+        return changed
+
 
 settings = Settings()

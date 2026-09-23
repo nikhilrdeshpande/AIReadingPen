@@ -111,6 +111,7 @@
         <div class="row"><span class="label">OCR engine</span>
           <select id="engine"><option value="paddle">PaddleOCR Devanagari v5</option><option value="tesseract">Tesseract mar/hin</option></select>
           <button id="btn-engine">Switch</button></div>
+        <div class="row"><span class="label">Settings</span><button id="btn-reload">Reload .env (thresholds, band)</button><span id="reload-msg"></span></div>
         <div class="row"><span class="label">Health</span><span id="health"></span></div>
         <div class="row"><span class="label">Band metrics</span><span id="metrics" class="metric"></span></div>
         <div class="row"><span class="label">Crops</span><a id="crop-link" href="#" target="_blank">latest crop</a> · <a id="full-link" href="#" target="_blank">latest frame</a></div>
@@ -218,6 +219,7 @@ $('btn-fixture').onclick = () => post('/load_fixture', {lesson_id: $('fixture').
 $('btn-file').onclick = async () => { const f = $('file').files[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); await fetch('/load_image', {method:'POST', body: fd}); };
 $('btn-override').onclick = () => post('/override', {lesson_id: $('lesson').value});
 $('btn-engine').onclick = () => post('/engine', {engine: $('engine').value});
+$('btn-reload').onclick = async () => { const r = await post('/reload'); $('reload-msg').textContent = 'changed: ' + (Object.keys(r.changed).join(', ') || 'nothing'); };
 init();
 </script>
 </body>

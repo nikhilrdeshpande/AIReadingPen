@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import signal
 import threading
 import time
 from pathlib import Path
@@ -190,8 +191,24 @@ def fixtures():
     return sorted(p.stem for p in (ROOT / "fixtures").glob("*.jpg"))
 
 
+def _hard_exit(signum, frame):
+    # PaddlePaddle's worker threads segfault during normal interpreter teardown, which macOS reports as
+    # "Python quit unexpectedly". Nothing needs flushing (traces are written as they happen), so leave at once.
+    os._exit(0)
+
+
+@app.post("/reload")
+def reload_settings():
+    """Re-read .env and apply thresholds/crop/language defaults live, no restart needed."""
+    changed = settings.reload()
+    ctl.crop = settings.crop_box()
+    return {"ok": True, "changed": changed}
+
+
 def main() -> None:
     os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
+    signal.signal(signal.SIGTERM, _hard_exit)
+    signal.signal(signal.SIGINT, _hard_exit)
     print(f"AI Reading Pen -> http://localhost:{settings.port}  preview={settings.camera_preview_url}")
     uvicorn.run(app, host="127.0.0.1", port=settings.port, log_level="warning")
 
