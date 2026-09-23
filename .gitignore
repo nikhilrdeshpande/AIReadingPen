@@ -14,3 +14,5 @@ traces/
 .DS_Store
 # Models (downloaded at setup time)
 models/
+content/audio/tts_*.wav
+content/audio/_silence.wav

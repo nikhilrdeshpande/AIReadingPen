@@ -73,6 +73,9 @@ class Settings:
     # OCR
     ocr_engine: str = os.environ.get("OCR_ENGINE", "paddle")
     ocr_confidence_threshold: float = _f("OCR_CONFIDENCE_THRESHOLD", 0.80)
+    # Words outside the reviewed manifest: accepted only with a stricter confidence, chunks auto-generated and labelled.
+    open_vocabulary: bool = _b("OPEN_VOCABULARY", True)
+    open_vocab_confidence_threshold: float = _f("OPEN_VOCAB_CONFIDENCE_THRESHOLD", 0.90)
     tessdata_dir: str = os.environ.get("TESSDATA_DIR", str(ROOT / "models" / "tessdata"))
 
     # Content
@@ -80,7 +83,7 @@ class Settings:
     audio_cache_dir: str = os.environ.get("AUDIO_CACHE_DIR", str(ROOT / "content" / "audio"))
 
     # TTS
-    enable_live_tts: bool = _b("ENABLE_LIVE_TTS", False)
+    enable_live_tts: bool = _b("ENABLE_LIVE_TTS", True)   # cache-only automatically when no provider key is set
     sarvam_api_key: str = os.environ.get("SARVAM_API_KEY", "")
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
     tts_timeout_s: float = _f("TTS_TIMEOUT_S", 4.0)

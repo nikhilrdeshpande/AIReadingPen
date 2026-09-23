@@ -103,7 +103,7 @@ def synthesize(provider: str, language: str, script: str, cache_dir: Path, voice
     if provider == "sarvam":
         if not settings.sarvam_api_key:
             return None
-        model, voice = "bulbul:v3", voice or "anushka"
+        model, voice = "bulbul:v3", voice or "priya"
         key = cache_key(provider, model, voice, language, script)
         out = cache_dir / f"tts_{provider}_{key}.wav"
         if out.exists():

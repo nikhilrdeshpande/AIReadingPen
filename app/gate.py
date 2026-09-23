@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import hashlib
+
+from . import akshara
+from .config import settings
 from .manifest import Lesson, Manifest
 from .ocr import OCRResult
 from .textnorm import normalize
@@ -11,7 +15,7 @@ from .textnorm import normalize
 @dataclass
 class GateDecision:
     accepted: bool
-    reason: str               # "ok" | "no_language" | "no_text" | "no_match" | "low_confidence"
+    reason: str               # "ok" | "ok_generated" | "no_language" | "no_text" | "no_match" | "low_confidence"
     normalized: str
     confidence: float | None
     lesson: Lesson | None
@@ -37,7 +41,24 @@ def evaluate(result: OCRResult, language: str, manifest: Manifest, threshold: fl
         return GateDecision(False, "no_text", norm, conf, None, hint="Show one word inside the band")
     lesson = manifest.lookup(language, norm)
     if lesson is None:
+        if settings.open_vocabulary and akshara.is_devanagari_word(norm) and conf is not None \
+                and conf >= settings.open_vocab_confidence_threshold and " " not in norm:
+            return GateDecision(True, "ok_generated", norm, conf, generated_lesson(language, norm))
         return GateDecision(False, "no_match", norm, conf, None, hint="Hold steady and move closer, then try again")
     if conf is not None and conf < threshold:
         return GateDecision(False, "low_confidence", norm, conf, lesson, hint="Improve the light and hold steady")
     return GateDecision(True, "ok", norm, conf, lesson)
+
+
+def generated_lesson(language: str, word: str) -> Lesson:
+    """Unreviewed lesson for a word outside the manifest. Chunks come from the deterministic akshara analyzer;
+    the speech script follows the reviewed template. Labelled 'generated' so the UI and trace never present it as reviewed."""
+    chunks = akshara.split(word)
+    prompt = "आता तू वाच." if language == "mr" else "अब तुम पढ़ो."
+    joiner = " आणि " if language == "mr" else " और "
+    body = joiner.join(chunks) if len(chunks) == 2 else ", ".join(chunks)
+    script = f"{word}. {body}. {word}. {prompt}" if len(chunks) > 1 else f"{word}. {word}. {prompt}"
+    lid = f"gen_{language}_{hashlib.sha1(word.encode()).hexdigest()[:8]}"
+    return Lesson(id=lid, language=language, word=word, normalized=word, teaching_chunks=chunks,
+                  lesson_class="generated", display_prompt=" + ".join(chunks), speech_script=script,
+                  audio_asset="", review_status="generated")

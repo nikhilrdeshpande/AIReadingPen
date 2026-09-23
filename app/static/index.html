@@ -167,7 +167,7 @@ function render(s) {
     lastCaptureId = r.capture_id;
     if (r.lesson) {
       $('word').textContent = r.lesson.word; $('chunks').textContent = r.lesson.display_prompt;
-      $('review').textContent = r.lesson.review_status==='approved_for_demo' ? 'Reviewed lesson' : 'Test expectation, not yet reviewed for children';
+      $('review').textContent = r.lesson.review_status==='approved_for_demo' ? 'Reviewed lesson' : (r.lesson.review_status==='generated' ? 'Auto-generated chunks, not reviewed (word outside the lesson pack)' : 'Test expectation, not yet reviewed for children');
     } else {
       $('word').textContent = r.word || '—'; $('chunks').textContent = r.accepted ? '' : 'Not confident';
       $('review').textContent = '';

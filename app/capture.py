@@ -321,6 +321,9 @@ class CaptureController:
     def replay_audio(self) -> dict:
         lid = (self.last_trace or {}).get("lesson_id")
         lesson = self.manifest.by_id(lid) if lid else None
+        if lesson is None and lid and lid.startswith("gen_") and self.last_result.get("lesson"):
+            from .gate import generated_lesson
+            lesson = generated_lesson(self.language, self.last_result["lesson"]["word"])
         if lesson is None:
             return {"ok": False, "error": "no lesson to replay"}
         self.audio.speak_lesson(lesson)

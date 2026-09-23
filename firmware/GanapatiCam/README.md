@@ -10,9 +10,9 @@ laptop, where the AI worker runs. Built and flashed with arduino-cli (`./flash.s
 - `usb_feed.py` — view/grab frames over USB, no Wi-Fi needed (`--save`, `--avg`, `--cmd`)
 - `laptop_stream.py` — laptop-side MJPEG client: `frames(url)` generator, `snapshot(url)`, `set_control(url, var, val)`
 
-## Current network setup (2026-09-13)
-Home network address was http://192.168.29.78/ (see wifi_secrets.h, git-ignored). Ask the router for a DHCP reservation for MAC
-90:70:69:10:96:A0 so it stays fixed. The u.FL antenna MUST be clipped on: without it the signal is
+## Network setup
+Station mode joins the Wi-Fi named in `wifi_secrets.h` (git-ignored; copy `wifi_secrets.example.h`). Ask the router for a
+DHCP reservation so the address stays fixed. The u.FL antenna MUST be clipped on: without it the signal is
 -93 dBm and nothing works; with it -50 to -63 dBm.
 
 ## Setting up for the event

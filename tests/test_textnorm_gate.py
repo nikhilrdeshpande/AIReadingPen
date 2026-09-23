@@ -61,12 +61,17 @@ def test_gate_accepts_exact_match(manifest):
     assert d.accepted and d.lesson.id == "mr_ghar_v1" and d.override is False
 
 
-def test_gate_rejects_punctuation_extra_words_non_manifest(manifest):
+def test_gate_rejects_punctuation_extra_words_non_manifest(manifest, monkeypatch):
+    monkeypatch.setattr(settings, "open_vocabulary", False)
     assert evaluate(_res("घर।"), "mr", manifest, 0.8).accepted           # outer punctuation is allowed normalization
     assert not evaluate(_res("घर झाड"), "mr", manifest, 0.8).accepted    # extra words
     assert not evaluate(_res("घरा"), "mr", manifest, 0.8).accepted       # near miss must NOT autocorrect
     assert evaluate(_res("घरा"), "mr", manifest, 0.8).reason == "no_match"
     assert not evaluate(_res("किताब"), "mr", manifest, 0.8).accepted     # Hindi-only word under Marathi
+    # with open vocabulary on, a near miss is its own generated word, never silently mapped to घर
+    monkeypatch.setattr(settings, "open_vocabulary", True)
+    d = evaluate(_res("घरा", conf=0.99), "mr", manifest, 0.8)
+    assert d.lesson.review_status == "generated" and d.lesson.word == "घरा"
 
 
 def test_gate_low_confidence(manifest):
@@ -81,3 +86,24 @@ def test_gate_requires_language(manifest):
 def test_gate_no_text(manifest):
     r = {"engine": "t", "raw_text": "", "candidates": [], "latency_ms": 1}
     assert evaluate(r, "mr", manifest, 0.8).reason == "no_text"
+
+
+def test_akshara_analyzer_matches_answer_key(manifest):
+    from app.akshara import split
+    for l in manifest.lessons:
+        assert split(l.word) == l.teaching_chunks, l.id
+
+
+def test_open_vocabulary_generated_lesson(manifest, monkeypatch):
+    monkeypatch.setattr(settings, "open_vocabulary", True)
+    monkeypatch.setattr(settings, "open_vocab_confidence_threshold", 0.9)
+    d = evaluate(_res("पुस्तक", conf=0.95), "mr", manifest, 0.8)
+    assert d.accepted and d.reason == "ok_generated"
+    assert d.lesson.review_status == "generated" and d.lesson.teaching_chunks == ["पु", "स्त", "क"]
+    assert d.lesson.audio_asset == ""
+    # stricter threshold than manifest words; non-Devanagari and multi-word never generate
+    assert evaluate(_res("पुस्तक", conf=0.85), "mr", manifest, 0.8).reason == "no_match"
+    assert evaluate(_res("hello", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
+    assert evaluate(_res("घर झाड", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
+    monkeypatch.setattr(settings, "open_vocabulary", False)
+    assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
