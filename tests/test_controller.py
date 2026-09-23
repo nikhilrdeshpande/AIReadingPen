@@ -66,6 +66,13 @@ def ctl(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "stable_dwell_ms", 200)
     monkeypatch.setattr(settings, "min_capture_cooldown_ms", 300)
     monkeypatch.setattr(settings, "rearm_change_ms", 100)
+    # thresholds for the synthetic 640x480 frames, independent of the .env calibration for the real lens
+    monkeypatch.setattr(settings, "text_occupancy_min", 0.01)
+    monkeypatch.setattr(settings, "text_occupancy_max", 0.45)
+    monkeypatch.setattr(settings, "sharpness_threshold", 10.0)
+    monkeypatch.setattr(settings, "motion_threshold", 6.0)
+    monkeypatch.setattr(settings, "exposure_min", 60.0)
+    monkeypatch.setattr(settings, "exposure_max", 253.0)
     monkeypatch.setattr(settings, "debug_dir", str(tmp_path / "dbg"))
     monkeypatch.setattr(settings, "trace_dir", str(tmp_path / "tr"))
     cam = FakeCamera()
