@@ -23,7 +23,11 @@
   .progress { position:absolute; left:0; right:0; bottom:0; height:6px; background:rgba(255,255,255,.12); }
   .progress > div { height:100%; background:var(--good); width:0; transition:width .12s linear; }
   .status { display:flex; align-items:center; gap:14px; margin-top:14px; }
-  .state { font-size:30px; font-weight:700; }
+  .state { font-size:30px; font-weight:700; display:flex; align-items:center; gap:12px; }
+  .dot { width:14px; height:14px; border-radius:50%; background:var(--muted); flex:none; }
+  .dot.searching { background:var(--accent); } .dot.stabilizing { background:var(--good); animation:pulse .8s infinite; }
+  .dot.speaking, .dot.listening { background:var(--good); } .dot.needs_recapture, .dot.camera_lost { background:var(--bad); }
+  .brand { display:flex; align-items:baseline; gap:10px; } .brand small { color:var(--muted); font-weight:400; font-size:12px; }
   .state small { font-size:14px; color:var(--muted); font-weight:400; margin-left:8px; }
   .hint { color:var(--warn); min-height:20px; margin-top:6px; }
   .controls { display:flex; gap:12px; margin-top:14px; align-items:center; flex-wrap:wrap; }
@@ -35,8 +39,9 @@
   .seg button { border:0; border-radius:0; padding:12px 20px; }
   .seg button.on { background:var(--accent); color:#111; font-weight:700; }
   .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
-  .word { font-size:84px; line-height:1.15; text-align:center; font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:100px; }
-  .chunks { text-align:center; font-size:38px; color:var(--accent); font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:48px; }
+  .word { font-size:96px; line-height:1.15; text-align:center; font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:100px; }
+  .script { text-align:center; font-size:20px; color:var(--muted); margin-top:10px; font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:26px; line-height:1.5; }
+  .chunks { text-align:center; font-size:40px; color:var(--accent); font-family:"Devanagari Sangam MN","Kohinoor Devanagari","Noto Sans Devanagari",sans-serif; min-height:48px; }
   .meta { display:flex; justify-content:center; gap:18px; color:var(--muted); font-size:14px; margin-top:8px; flex-wrap:wrap; }
   .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
   .review { text-align:center; font-size:12px; color:var(--muted); margin-top:6px; }
@@ -60,7 +65,7 @@
 </head>
 <body>
 <header>
-  <h1>AI Reading Pen <span class="pill" id="pill-ready">booting</span><span class="pill" id="pill-cam">camera</span><span class="pill" id="pill-ocr">ocr</span><span class="pill" id="pill-audio">audio</span></h1>
+  <h1 class="brand">AI Reading Pen <small>Devanagari · Marathi & Hindi</small> <span class="pill" id="pill-ready">booting</span><span class="pill" id="pill-cam">camera</span><span class="pill" id="pill-ocr">ocr</span><span class="pill" id="pill-audio">audio</span></h1>
   <div class="seg" id="lang">
     <button data-lang="mr" class="on">मराठी Marathi</button>
     <button data-lang="hi">हिंदी Hindi</button>
@@ -74,7 +79,7 @@
       <div class="progress"><div id="progress"></div></div>
     </div>
     <div class="status">
-      <div class="state"><span id="state-label">Starting up</span><small id="state-detail"></small></div>
+      <div class="state"><span class="dot" id="state-dot"></span><span id="state-label">Starting up</span><small id="state-detail"></small></div>
     </div>
     <div class="hint" id="hint"></div>
     <div class="controls">
@@ -91,6 +96,7 @@
       <div class="label">Recognized word</div>
       <div class="word" id="word">&nbsp;</div>
       <div class="chunks" id="chunks">&nbsp;</div>
+      <div class="script" id="script"></div>
       <div class="review" id="review"></div>
       <div class="practice" id="practice-box"></div>
       <div class="meta">
@@ -161,6 +167,7 @@ function render(s) {
   bootStarted = s.boot.started;
   if (s.camera.connected) { stallTicks = (s.camera.frames === lastFrames) ? stallTicks + 1 : 0; lastFrames = s.camera.frames;
     if (stallTicks === 20 || (img.complete && img.naturalWidth === 0 && stallTicks % 20 === 10)) reconnectPreview(); }
+  $('state-dot').className = 'dot ' + s.state;
   $('state-label').textContent = s.label;
   $('state-detail').textContent = s.state==='searching' && s.eligibility_reason!=='ok' ? s.eligibility_reason : (s.state==='stabilizing' ? s.stable_ms+' ms' : '');
   $('hint').textContent = s.error ? s.error : (s.hint || '');
@@ -191,9 +198,10 @@ function render(s) {
     lastCaptureId = r.capture_id;
     if (r.lesson) {
       $('word').textContent = r.lesson.word; $('chunks').textContent = r.lesson.display_prompt;
+      $('script').textContent = r.lesson.speech_script || '';
       $('review').textContent = r.lesson.review_status==='approved_for_demo' ? 'Reviewed lesson' : (r.lesson.review_status==='generated' ? 'Auto-generated chunks, not reviewed (word outside the lesson pack)' : 'Test expectation, not yet reviewed for children');
     } else {
-      $('word').textContent = r.word || '—'; $('chunks').textContent = r.accepted ? '' : 'Not confident';
+      $('word').textContent = r.word || '—'; $('chunks').textContent = r.accepted ? '' : 'Not confident'; $('script').textContent = '';
       $('review').textContent = '';
     }
     $('conf').textContent = r.confidence==null ? '–' : (r.confidence*100).toFixed(1)+'%';

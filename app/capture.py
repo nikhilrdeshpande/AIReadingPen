@@ -351,7 +351,15 @@ class CaptureController:
         trace.save(settings.trace_dir)
         with self._lock:
             self.last_trace = dict(trace)
-            self.last_result = {"lesson": lesson.to_dict() if lesson else None,
+            ld = lesson.to_dict() if lesson else None
+            if ld is not None:
+                try:
+                    from . import lesson_audio
+                    segs = lesson_audio.barakhadi_segments(lesson) if settings.lesson_style == "barakhadi" else lesson_audio.template_segments(lesson)
+                    ld["speech_script"] = lesson_audio.script_text(segs)
+                except Exception:  # noqa: BLE001
+                    pass
+            self.last_result = {"lesson": ld,
                                 "word": (trace.get("ocr") or {}).get("normalized", ""),
                                 "confidence": (trace.get("ocr") or {}).get("confidence"),
                                 "accepted": bool((trace.get("gate") or {}).get("accepted")),

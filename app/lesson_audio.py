@@ -16,7 +16,7 @@ from . import sarvam
 from .config import settings
 from .manifest import Lesson
 
-SCRIPT_VERSION = "5"   # bump when the template changes so cached audio is rebuilt
+SCRIPT_VERSION = "6"   # danda (।) between sounds: a full stop after a lone syllable is read aloud as "dot"   # bump when the template changes so cached audio is rebuilt
 
 
 @dataclass
@@ -63,7 +63,7 @@ def template_segments(lesson: Lesson) -> list[Segment]:
     The drill is one utterance with sentence breaks so the model keeps its natural prosody;
     single-syllable utterances sound synthetic."""
     word, chunks = lesson.word, lesson.teaching_chunks
-    drill = " ".join(f"{c}." for c in chunks) + (f" {', '.join(chunks)}." if len(chunks) > 1 else "")
+    drill = " ".join(f"{c}।" for c in chunks) + (f" {', '.join(chunks)}।" if len(chunks) > 1 else "")
     return [Segment(f"{word}.", PACE, GAP), Segment(drill, PACE, GAP), Segment(f"{word}.", PACE, GAP),
             Segment(_prompt(lesson.language), PACE, 0)]
 
@@ -74,9 +74,9 @@ def barakhadi_segments(lesson: Lesson) -> list[Segment]:
     lines = []
     for c in chunks:
         phrase = chunk_teaching_phrase(c, lesson.language)
-        lines.append(f"{phrase}." if phrase else f"{c}.")
+        lines.append(f"{phrase}।" if phrase else f"{c}।")
     if len(chunks) > 1:
-        lines.append(f"{', '.join(chunks)}.")
+        lines.append(f"{', '.join(chunks)}।")
     return [Segment(f"{word}.", PACE, GAP), Segment(" ".join(lines), PACE, GAP), Segment(f"{word}.", PACE, GAP),
             Segment(_prompt(lesson.language), PACE, 0)]
 

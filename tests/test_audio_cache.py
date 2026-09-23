@@ -26,9 +26,9 @@ def test_stitch_and_template_segments():
         assert abs(w.getnframes() / 22050 - 0.6) < 0.01
     m = Manifest(settings.lesson_manifest)
     segs = template_segments(m.by_id("mr_jhaad_v1"))
-    assert [s.text for s in segs] == ["झाड.", "झा. ड. झा, ड.", "झाड.", "आता तू म्हण."]
+    assert [s.text for s in segs] == ["झाड.", "झा। ड। झा, ड।", "झाड.", "आता तू म्हण."]
     from app.lesson_audio import barakhadi_segments
-    assert [s.text for s in barakhadi_segments(m.by_id("mr_jhaad_v1"))] == ["झाड.", "झ ला काना, झा. ड. झा, ड.", "झाड.", "आता तू म्हण."]
+    assert [s.text for s in barakhadi_segments(m.by_id("mr_jhaad_v1"))] == ["झाड.", "झ ला काना, झा। ड। झा, ड।", "झाड.", "आता तू म्हण."]
     assert "झा" in script_text(segs)
 
 
