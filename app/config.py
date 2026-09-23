@@ -90,6 +90,8 @@ class Settings:
     sarvam_api_key: str = os.environ.get("SARVAM_API_KEY", "")
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
     tts_timeout_s: float = _f("TTS_TIMEOUT_S", 4.0)
+    sarvam_voice: str = os.environ.get("SARVAM_VOICE", "priya")
+    sarvam_temperature: float = _f("SARVAM_TEMPERATURE", 0.6)
     lesson_style: str = os.environ.get("LESSON_STYLE", "barakhadi")   # barakhadi ("झ ला काना, झा") or plain
     lesson_script_llm: bool = _b("LESSON_SCRIPT_LLM", False)   # ask Sarvam's LLM to write the teacher script (slow; generation time only)
 

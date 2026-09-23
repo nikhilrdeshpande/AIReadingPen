@@ -12,7 +12,7 @@ import uuid
 from .config import settings
 
 BASE = "https://api.sarvam.ai"
-TTS_VOICE = "priya"
+TTS_VOICE = settings.sarvam_voice
 TTS_MODEL = "bulbul:v3"
 CHAT_MODEL = "sarvam-105b-conversations"   # non-reasoning: ~0.4 s; sarvam-105b spends its whole budget reasoning
 STT_MODEL = "saarika:v2.5"
@@ -44,10 +44,12 @@ def chat(system: str, user: str, timeout: float = 15.0, max_tokens: int = 600) -
     return content
 
 
-def tts(text: str, language: str, pace: float = 0.9, voice: str = TTS_VOICE, timeout: float = 20.0) -> bytes:
-    """Return WAV bytes (22050 Hz mono 16-bit)."""
-    body = json.dumps({"text": text, "target_language_code": _lang(language), "speaker": voice, "model": TTS_MODEL,
-                       "speech_sample_rate": 22050, "pace": pace}).encode()
+def tts(text: str, language: str, pace: float = 1.0, voice: str | None = None, timeout: float = 20.0,
+        temperature: float | None = None) -> bytes:
+    """Return WAV bytes (24000 Hz mono 16-bit, the model's native rate)."""
+    body = json.dumps({"text": text, "language_code": _lang(language), "speaker": voice or settings.sarvam_voice,
+                       "model": TTS_MODEL, "speech_sample_rate": 24000, "pace": pace,
+                       "temperature": settings.sarvam_temperature if temperature is None else temperature}).encode()
     req = urllib.request.Request(f"{BASE}/text-to-speech", data=body, headers=_headers({"Content-Type": "application/json"}))
     for attempt in range(7):
         try:

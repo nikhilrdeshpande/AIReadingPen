@@ -16,7 +16,7 @@ from . import sarvam
 from .config import settings
 from .manifest import Lesson
 
-SCRIPT_VERSION = "4"   # bump when the template changes so cached audio is rebuilt
+SCRIPT_VERSION = "5"   # bump when the template changes so cached audio is rebuilt
 
 
 @dataclass
@@ -26,8 +26,8 @@ class Segment:
     gap_ms: int = 450     # silence after this segment
 
 
-PACE = 0.8          # one pace for every segment so the run sounds like one speaker
-GAP = 400
+PACE = 1.0          # the model's natural pace; slowing it makes the voice sound synthetic
+GAP = 500
 
 # Vowel-sign (matra) names as teachers say them. Marathi barakhadi names; Hindi "की मात्रा" names.
 MATRA_NAMES = {
@@ -54,33 +54,31 @@ def chunk_teaching_phrase(chunk: str, language: str) -> str | None:
     return f"{base}{joiner}{' आणि '.join(names[m] for m in marks) if language == 'mr' else ' और '.join(names[m] for m in marks)}, {chunk}"
 
 
+def _prompt(language: str) -> str:
+    return "आता तू म्हण." if language == "mr" else "अब तुम बोलो."
+
+
 def template_segments(lesson: Lesson) -> list[Segment]:
-    """Plain drill: word, each sound, blend, word, your turn."""
-    mr = lesson.language == "mr"
+    """Plain drill in four utterances: word | each sound, then the blend | word | your turn.
+    The drill is one utterance with sentence breaks so the model keeps its natural prosody;
+    single-syllable utterances sound synthetic."""
     word, chunks = lesson.word, lesson.teaching_chunks
-    segs = [Segment(f"{word}.", PACE, GAP + 150)]
-    for c in chunks:
-        segs.append(Segment(f"{c}.", PACE, GAP))
-    if len(chunks) > 1:
-        segs.append(Segment(", ".join(chunks) + ".", PACE, GAP))
-    segs.append(Segment(f"{word}.", PACE, GAP + 150))
-    segs.append(Segment("आता तू म्हण." if mr else "अब तुम बोलो.", PACE, 0))
-    return segs
+    drill = " ".join(f"{c}." for c in chunks) + (f" {', '.join(chunks)}." if len(chunks) > 1 else "")
+    return [Segment(f"{word}.", PACE, GAP), Segment(drill, PACE, GAP), Segment(f"{word}.", PACE, GAP),
+            Segment(_prompt(lesson.language), PACE, 0)]
 
 
 def barakhadi_segments(lesson: Lesson) -> list[Segment]:
-    """Traditional drill: word, then for each akshara 'झ ला काना, झा', the blend, word, your turn."""
-    mr = lesson.language == "mr"
+    """Traditional drill: word | 'झ ला काना, झा. ड. झा, ड.' | word | your turn."""
     word, chunks = lesson.word, lesson.teaching_chunks
-    segs = [Segment(f"{word}.", PACE, GAP + 150)]
+    lines = []
     for c in chunks:
         phrase = chunk_teaching_phrase(c, lesson.language)
-        segs.append(Segment(f"{phrase}." if phrase else f"{c}.", PACE, GAP))
+        lines.append(f"{phrase}." if phrase else f"{c}.")
     if len(chunks) > 1:
-        segs.append(Segment(", ".join(chunks) + ".", PACE, GAP))
-    segs.append(Segment(f"{word}.", PACE, GAP + 150))
-    segs.append(Segment("आता तू म्हण." if mr else "अब तुम बोलो.", PACE, 0))
-    return segs
+        lines.append(f"{', '.join(chunks)}.")
+    return [Segment(f"{word}.", PACE, GAP), Segment(" ".join(lines), PACE, GAP), Segment(f"{word}.", PACE, GAP),
+            Segment(_prompt(lesson.language), PACE, 0)]
 
 
 def _normalize_level(pcm: bytes, width: int, target_rms: float = 2500.0) -> bytes:
@@ -148,7 +146,7 @@ def stitch(wavs: list[bytes], gaps_ms: list[int]) -> bytes:
 
 
 def cache_path(lesson: Lesson, segs: list[Segment], cache_dir: Path) -> Path:
-    key = hashlib.sha256(f"sarvam|{sarvam.TTS_MODEL}|{sarvam.TTS_VOICE}|{lesson.language}|{SCRIPT_VERSION}|"
+    key = hashlib.sha256(f"sarvam|{sarvam.TTS_MODEL}|{settings.sarvam_voice}|{settings.sarvam_temperature}|{lesson.language}|{SCRIPT_VERSION}|"
                          f"{json.dumps([(s.text, s.pace, s.gap_ms) for s in segs], ensure_ascii=False)}".encode()).hexdigest()[:16]
     return cache_dir / f"lesson_{lesson.language}_{key}.wav"
 
@@ -183,5 +181,5 @@ def feedback_path(language: str, verdict: str, cache_dir: Path) -> Path | None:
     if not out.exists():
         if not sarvam.available():
             return None
-        out.write_bytes(sarvam.tts(text, language, pace=1.0))
+        out.write_bytes(sarvam.tts(text, language))
     return out
