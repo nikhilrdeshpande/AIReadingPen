@@ -89,6 +89,12 @@ class Settings:
     sarvam_api_key: str = os.environ.get("SARVAM_API_KEY", "")
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
     tts_timeout_s: float = _f("TTS_TIMEOUT_S", 4.0)
+    lesson_script_llm: bool = _b("LESSON_SCRIPT_LLM", False)   # ask Sarvam's LLM to write the teacher script (slow; generation time only)
+
+    # "Your turn" practice step
+    practice_enabled: bool = _b("PRACTICE_ENABLED", True)
+    practice_seconds: float = _f("PRACTICE_SECONDS", 3.0)
+    mic_device: str = os.environ.get("MIC_DEVICE", "MacBook")
 
     debug_save_frames: bool = _b("DEBUG_SAVE_FRAMES", True)
     debug_dir: str = os.environ.get("DEBUG_DIR", str(ROOT / "debug_frames"))

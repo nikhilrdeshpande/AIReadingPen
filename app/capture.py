@@ -26,11 +26,12 @@ from .trace import Trace, new_capture_id
 
 USER_LABELS = {
     "booting": "Starting up", "searching": "Finding word", "stabilizing": "Hold steady",
-    "capturing": "Captured", "processing": "Reading", "speaking": "Listen", "locked": "Move to next word",
+    "capturing": "Captured", "processing": "Reading", "speaking": "Listen", "listening": "Your turn, say it!",
+    "checking": "Checking", "locked": "Move to next word",
     "rearming": "Move to next word", "needs_recapture": "Not confident, try again",
     "operator_recovery": "Operator recovery", "camera_lost": "Camera not connected",
 }
-BUSY = {"capturing", "processing", "speaking", "locked"}
+BUSY = {"capturing", "processing", "speaking", "listening", "checking", "locked"}
 
 
 class CaptureController:
@@ -53,6 +54,8 @@ class CaptureController:
         self.history: list[dict] = []
         self.hint = ""
         self.error = ""
+        self.practice_enabled = settings.practice_enabled
+        self.practice: dict | None = None
         self._prev_gray: np.ndarray | None = None
         self._locked_gray: np.ndarray | None = None
         self._changed_since: float | None = None
@@ -197,10 +200,13 @@ class CaptureController:
 
     def cancel(self) -> None:
         self.audio.stop()
+        if self.state == "listening":
+            self.practice = {"status": "cancelled"}
         self._rearm()
 
     def _process(self, source: str, stable_ms: int | None, image_bytes: bytes | None, image_source: str | None) -> None:
         cid = new_capture_id()
+        self.practice = None
         trace = Trace(cid, self.language, image_source or "xiao",
                       {"source": source, "stable_ms": stable_ms}, dict(self.crop))
         self.hint, self.error = "", ""
@@ -270,13 +276,19 @@ class CaptureController:
         self._publish(trace, lesson)          # word + chunks visible before audio starts
         self._set_state("speaking")
 
-        def done():
-            trace.mark("audio_end")
+        def finish():
             trace.save(settings.trace_dir)
             if self.camera.health.to_dict().get("connected"):
                 self._set_state("locked")     # camera decides when to re-arm (card removed / changed)
             else:
                 self._rearm()                 # no camera: saved-image replay path re-arms itself
+
+        def done():
+            trace.mark("audio_end")
+            if self.practice_enabled and settings.sarvam_api_key and self.state == "speaking":
+                threading.Thread(target=self._practice, args=(trace, lesson, finish), daemon=True).start()
+            else:
+                finish()
         t0 = time.perf_counter()
         audio = self.audio.speak_lesson(lesson, on_done=done)
         trace["audio"] = audio
@@ -285,6 +297,31 @@ class CaptureController:
         if audio["source"] == "none":
             self.hint = "No audio available. Replay from cache or check provider."
         self._publish(trace, lesson)
+
+    def _practice(self, trace: Trace, lesson: Lesson, finish) -> None:
+        """Record the child, transcribe, compare, give spoken feedback. Never blocks the preview loop."""
+        from . import lesson_audio, practice
+        self._set_state("listening")
+        self.practice = {"status": "listening", "target": lesson.word}
+        try:
+            r = practice.listen_and_check(lesson.word, lesson.language, settings.practice_seconds)
+            if self.state != "listening":          # cancelled meanwhile
+                return
+            self._set_state("checking")
+            r["status"] = "done"; r["target"] = lesson.word
+            self.practice = r
+            trace["practice"] = r
+            with self._lock:
+                self.last_trace = dict(trace)
+            fb = lesson_audio.feedback_path(lesson.language, r["verdict"], Path(settings.audio_cache_dir)) if r["verdict"] != "no_speech" else None
+            if fb:
+                self.audio.play_file_blocking(fb)
+        except Exception as e:  # noqa: BLE001
+            self.practice = {"status": "error", "target": lesson.word, "error": str(e)[:120]}
+            trace["practice"] = self.practice
+            with self._lock:
+                self.last_trace = dict(trace)
+        finish()
 
     def _publish(self, trace: Trace, lesson: Lesson | None) -> None:
         trace.save(settings.trace_dir)
@@ -356,6 +393,7 @@ class CaptureController:
                 "stable_ms": self.stable_ms, "dwell_progress": round(self.dwell_progress, 3),
                 "dwell_target_ms": settings.stable_dwell_ms, "metrics": self.metrics,
                 "hint": self.hint, "error": self.error, "crop": self.crop,
+                "practice_enabled": self.practice_enabled, "practice": self.practice,
                 "mirror": {"h": settings.camera_hmirror, "v": settings.camera_vflip},
                 "result": self.last_result, "trace": self.last_trace, "history": self.history[:10],
                 "audio": {"playing": self.audio.playing, "source": self.audio.last_source, "asset": self.audio.last_asset},

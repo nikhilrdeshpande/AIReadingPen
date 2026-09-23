@@ -31,12 +31,27 @@ still runs from the operator drawer (load fixture or file), which is also the re
 | `app/ocr/` | `paddle_engine.py` (PP-OCRv5 Devanagari, recognition-only, ~50 ms) and `tesseract_engine.py` (mar/hin) |
 | `app/gate.py`, `app/textnorm.py` | NFC + trim, exact manifest match, calibrated confidence threshold. No autocorrect. |
 | `app/manifest.py`, `content/lessons.yaml` | Versioned reviewed lesson content, 24 cards, 4 approved for demo |
-| `app/audio.py` | cache -> Sarvam -> OpenAI -> visible failure; playback via `afplay` |
+| `app/audio.py` | cache -> Sarvam stitched build -> OpenAI -> visible failure; playback via `afplay` |
+| `app/lesson_audio.py`, `app/sarvam.py`, `app/practice.py` | Segment-wise teaching audio, Sarvam client (chat/TTS/STT), child "your turn" check |
+| `app/akshara.py` | Deterministic Devanagari akshara splitter for words outside the manifest |
 | `scripts/gen_audio.py` | Generate `content/audio/*.wav` from speech scripts (`--provider openai|sarvam|macos`) |
 | `scripts/bench_cards.py` | Benchmark both engines on a folder of card images |
 | `fixtures/` | Synthetic crops of the 4 demo words for saved-image replay |
 | `firmware/GanapatiCam/` | XIAO camera firmware + `usb_feed.py` USB bridge (Wi-Fi creds in git-ignored `wifi_secrets.h`) |
 | `traces/`, `debug_frames/` | Per-capture JSON traces and saved frames/crops (git-ignored) |
+
+## Teaching audio and the "your turn" step
+
+Each lesson is spoken as separate Sarvam Bulbul v3 segments stitched with real silence: the word, each sound
+alone and slowly, the blend, the word again, then "आता तू म्हण" (now you say it). `scripts/gen_audio.py --provider sarvam`
+builds the 24 reviewed clips (`--llm` lets Sarvam's LLM write the script instead of the template; review the
+`.segments.json` sidecars, the LLM once produced a conjunct that was not in the word). Words outside the pack
+are built live the same way and cached.
+
+After the lesson the app records the child for `PRACTICE_SECONDS`, transcribes with Sarvam Saarika, compares to
+the target (exact or close match) and plays a short praise/retry clip. `MIC_DEVICE` picks the microphone by
+name substring. Toggle "Your turn (mic)" in the UI to skip it. macOS will ask for microphone permission for
+the terminal the first time.
 
 ## Calibration
 

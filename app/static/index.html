@@ -40,6 +40,10 @@
   .meta { display:flex; justify-content:center; gap:18px; color:var(--muted); font-size:14px; margin-top:8px; flex-wrap:wrap; }
   .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
   .review { text-align:center; font-size:12px; color:var(--muted); margin-top:6px; }
+  .practice { text-align:center; font-size:22px; margin-top:12px; min-height:30px; }
+  .practice .heard { font-family:"Devanagari Sangam MN","Kohinoor Devanagari",sans-serif; font-size:30px; }
+  .practice.listening { color:var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
   details { margin-top:18px; }
   summary { cursor:pointer; color:var(--muted); }
   .drawer { display:grid; gap:12px; margin-top:12px; font-size:14px; }
@@ -76,6 +80,7 @@
     <div class="controls">
       <button class="primary" id="btn-capture" title="Space">Capture</button>
       <label class="row"><input type="checkbox" id="auto" checked> Auto-capture</label>
+      <label class="row"><input type="checkbox" id="practice" checked> Your turn (mic)</label>
       <button id="btn-cancel">Cancel / re-arm</button>
       <button id="btn-replay">Replay audio</button>
       <span class="label">Space = Capture</span>
@@ -87,6 +92,7 @@
       <div class="word" id="word">&nbsp;</div>
       <div class="chunks" id="chunks">&nbsp;</div>
       <div class="review" id="review"></div>
+      <div class="practice" id="practice-box"></div>
       <div class="meta">
         <span>Confidence <b id="conf">–</b></span>
         <span>Audio <b id="audio-src">–</b></span>
@@ -159,6 +165,16 @@ function render(s) {
   $('hint').textContent = s.error ? s.error : (s.hint || '');
   $('btn-capture').disabled = ['capturing','processing','speaking','booting'].includes(s.state) || !s.engine_ready;
   if ($('auto').checked !== s.auto_enabled) $('auto').checked = s.auto_enabled;
+  if ($('practice').checked !== s.practice_enabled) $('practice').checked = s.practice_enabled;
+  const pr = s.practice, pb = $('practice-box');
+  if (!pr) { pb.textContent = ''; pb.className = 'practice'; }
+  else if (pr.status === 'listening') { pb.innerHTML = '🎤 Your turn: say <span class="heard">' + pr.target + '</span>'; pb.className = 'practice listening'; }
+  else if (pr.status === 'done') {
+    const icon = pr.verdict === 'correct' ? '✅' : (pr.verdict === 'close' ? '🟡' : (pr.verdict === 'no_speech' ? '🔇' : '❌'));
+    const msg = pr.verdict === 'correct' ? 'Correct!' : (pr.verdict === 'close' ? 'Close!' : (pr.verdict === 'no_speech' ? 'Did not hear you' : 'Try again'));
+    pb.innerHTML = icon + ' ' + msg + (pr.heard ? ' · heard <span class="heard">' + pr.heard + '</span>' : '');
+    pb.className = 'practice ' + (pr.match ? 'ok' : 'warn');
+  } else { pb.textContent = pr.status === 'error' ? 'Mic/STT error: ' + pr.error : ''; pb.className = 'practice bad'; }
   if (curLang !== s.language) { curLang = s.language; fillLessons(); }
   document.querySelectorAll('#lang button').forEach(x=>x.classList.toggle('on', x.dataset.lang===s.language));
   pill('pill-ready', s.boot.ready && s.camera.connected, s.boot.ready ? (s.camera.connected?'ready':'ready (no camera)') : 'booting');
@@ -194,6 +210,7 @@ function render(s) {
 $('btn-capture').onclick = () => post('/capture', {source:'button'});
 window.addEventListener('keydown', e => { if (e.code==='Space' && !['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)) { e.preventDefault(); post('/capture', {source:'space'}); } });
 $('auto').onchange = e => post('/auto', {enabled: e.target.checked});
+$('practice').onchange = e => post('/practice', {enabled: e.target.checked});
 $('btn-cancel').onclick = () => post('/cancel');
 $('btn-replay').onclick = () => post('/replay');
 document.querySelectorAll('#lang button').forEach(x => x.onclick = () => post('/language', {language: x.dataset.lang}));

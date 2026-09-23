@@ -46,6 +46,9 @@ class AudioPlayer:
                 self._proc.terminate()
             self.playing = False
 
+    def play_file_blocking(self, path: str | Path) -> None:
+        subprocess.run(["afplay", str(path)], check=False, timeout=15)
+
     def play_file(self, path: str | Path, on_done=None) -> None:
         self.stop()
         with self._lock:
@@ -64,23 +67,30 @@ class AudioPlayer:
 
     # ---- routing ----
     def resolve(self, lesson: Lesson) -> tuple[str, str] | None:
-        """Return (source, path) for the lesson audio, generating via a live provider if allowed. None on failure."""
+        """(source, path) for the lesson audio: reviewed cached asset -> Sarvam stitched build (cached) -> OpenAI -> None."""
         cache_dir = Path(settings.audio_cache_dir)
         if lesson.audio_asset:
             p = Path(lesson.audio_asset)
             if not p.is_absolute():
-                p = (Path(settings.lesson_manifest).parent / p) if (Path(settings.lesson_manifest).parent / p).exists() else cache_dir / p.name
+                cand = Path(settings.lesson_manifest).parent / p
+                p = cand if cand.exists() else cache_dir / p.name
             if p.exists():
                 return ("cache", str(p))
         if not settings.enable_live_tts:
             return None
-        for provider in ("sarvam", "openai"):
+        if settings.sarvam_api_key:
             try:
-                path = synthesize(provider, lesson.language, lesson.speech_script, cache_dir)
-                if path:
-                    return (provider, str(path))
+                from . import lesson_audio
+                path, _ = lesson_audio.build(lesson, cache_dir, use_llm=settings.lesson_script_llm)
+                return ("sarvam", str(path))
             except Exception as e:  # noqa: BLE001
-                print(f"[audio] {provider} failed: {e}")
+                print(f"[audio] sarvam lesson build failed: {e}")
+        try:
+            path = synthesize("openai", lesson.language, lesson.speech_script, cache_dir)
+            if path:
+                return ("openai", str(path))
+        except Exception as e:  # noqa: BLE001
+            print(f"[audio] openai failed: {e}")
         return None
 
     def speak_lesson(self, lesson: Lesson, on_done=None) -> dict:

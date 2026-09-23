@@ -144,6 +144,12 @@ def auto(body: Auto):
     return {"ok": True, "auto_enabled": ctl.auto_enabled}
 
 
+@app.post("/practice")
+def practice_toggle(body: Auto):
+    ctl.practice_enabled = body.enabled
+    return {"ok": True, "practice_enabled": ctl.practice_enabled}
+
+
 @app.post("/engine")
 def engine(body: Engine):
     if body.engine not in ("paddle", "tesseract"):

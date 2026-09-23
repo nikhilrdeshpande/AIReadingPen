@@ -78,6 +78,7 @@ def ctl(monkeypatch, tmp_path):
     cam = FakeCamera()
     c = capmod.CaptureController(cam, Manifest(settings.lesson_manifest), FakeAudio())
     c.engine, c.engine_ready = FakeEngine("घर"), True
+    c.practice_enabled = False          # no microphone / STT in unit tests
     c.start()
     yield c, cam
     c._stop.set()
