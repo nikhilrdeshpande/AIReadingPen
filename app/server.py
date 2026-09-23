@@ -54,6 +54,11 @@ def index():
     return FileResponse(STATIC / "index.html")
 
 
+@app.get("/about")
+def about():
+    return FileResponse(STATIC / "about.html")
+
+
 @app.get("/preview.mjpg")
 async def preview():
     async def gen():

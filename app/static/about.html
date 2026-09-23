@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>About · AI Reading Pen</title>
+<style>
+body{margin:0;background:#0f1115;color:#f2f4f8;font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;line-height:1.55}
+main{max-width:760px;margin:0 auto;padding:36px 20px 60px}
+h1{font-size:34px;margin:0 0 4px} .dek{color:#93a0b5;font-size:19px;margin:0 0 28px}
+h2{font-size:20px;margin:28px 0 8px;color:#ffb703} p,li{max-width:66ch} ul{padding-left:20px}
+.dev{font-family:"Devanagari Sangam MN","Kohinoor Devanagari",sans-serif}
+.big{font-size:56px;line-height:1.1;margin:0 0 6px}
+a{color:#ffb703} .back{display:inline-block;margin-bottom:20px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+.card{background:#181c24;border:1px solid #2a3140;border-radius:10px;padding:12px 14px} .card b{display:block;margin-bottom:4px}
+</style></head><body><main>
+<a class="back" href="/">← Back to the pen</a>
+<p class="big dev">झाड → झ ला काना, झा। ड। झाड।</p>
+<h1>AI Reading Pen</h1>
+<p class="dek">A pointing device for children who know some Devanagari letters but cannot yet blend them into words.</p>
+
+<h2>The bigger idea</h2>
+<p>Millions of children in India learn to read Marathi and Hindi with very little one-to-one help. The missing piece is not content, it is a patient adult who, for any word the child points at, says the word, breaks it into the sounds the child already knows, blends them back, and then listens to the child try. A reading pen puts that adult inside a small camera the child can hold over any book, worksheet, or signboard.</p>
+
+<h2>What this demo proves</h2>
+<div class="grid">
+  <div class="card"><b>Point and hear</b>A XIAO ESP32S3 camera reads one printed word and the lesson starts in under 200 ms.</div>
+  <div class="card"><b>Teach, don't just read</b>Lessons follow the barakhadi method teachers use: <span class="dev">झ ला काना, झा</span>. Reviewed for 24 words, generated for any other real word.</div>
+  <div class="card"><b>Listen back</b>The child says the word; speech recognition checks it and the pen praises or asks again.</div>
+  <div class="card"><b>Never invent</b>Fragments and misreads are refused. A wrong word is worse than "try again" in a literacy product.</div>
+</div>
+
+<h2>What the product would add</h2>
+<ul>
+  <li>On-device recognition and speech, so the pen works without a laptop or network.</li>
+  <li>A speaker in the pen and a small screen or light ring for "hold steady" feedback.</li>
+  <li>Pointing at one word inside a full page, not a single-word card.</li>
+  <li>Teacher-reviewed lesson packs per grade, with progress a parent or teacher can see.</li>
+  <li>More scripts: the same pipeline applies to Gujarati, Kannada, Tamil and others.</li>
+</ul>
+
+<h2>Built today with</h2>
+<p>Seeed XIAO ESP32S3 Sense, PaddleOCR Devanagari, Sarvam AI Bulbul (speech), Saarika (listening) and sarvam-105b (word validation), Claude Code for the build. Source: <a href="https://github.com/nikhilrdeshpande/AIReadingPen" target="_blank" rel="noopener">github.com/nikhilrdeshpande/AIReadingPen</a></p>
+</main></body></html>
