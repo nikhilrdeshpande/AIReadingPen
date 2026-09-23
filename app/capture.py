@@ -296,9 +296,13 @@ class CaptureController:
                                 "accepted": bool((trace.get("gate") or {}).get("accepted")),
                                 "override": bool((trace.get("gate") or {}).get("override")),
                                 "audio": trace.get("audio"), "capture_id": trace["capture_id"]}
-            self.history.insert(0, {"capture_id": trace["capture_id"], "word": self.last_result["word"],
-                                    "accepted": self.last_result["accepted"], "timing_ms": trace["timing_ms"],
-                                    "source": trace["trigger"]["source"]})
+            entry = {"capture_id": trace["capture_id"], "word": self.last_result["word"],
+                     "accepted": self.last_result["accepted"], "timing_ms": trace["timing_ms"],
+                     "source": trace["trigger"]["source"]}
+            if self.history and self.history[0]["capture_id"] == entry["capture_id"]:
+                self.history[0] = entry            # same capture published again (after audio start)
+            else:
+                self.history.insert(0, entry)
             del self.history[30:]
 
     # ---------------- operator actions ----------------
