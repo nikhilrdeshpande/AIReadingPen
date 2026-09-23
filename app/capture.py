@@ -22,6 +22,7 @@ from .config import settings
 from .gate import GateDecision, evaluate
 from .manifest import Lesson, Manifest
 from .ocr import OCREngine, get_engine
+from .textnorm import normalize
 from .trace import Trace, new_capture_id
 
 USER_LABELS = {
@@ -114,12 +115,17 @@ class CaptureController:
             m = preprocess.metrics(gray, self._prev_gray)
             self._prev_gray = gray
             self.metrics = m.to_dict()
-            self._step(gray, m)
+            edges = preprocess.ink_touches_edges(gray) if m.occupancy >= settings.text_occupancy_min else None
+            self._step(gray, m, edges)
             dt = time.time() - t_start
             if dt < period:
                 time.sleep(period - dt)
 
-    def _eligibility(self, m: preprocess.BandMetrics) -> tuple[bool, str]:
+    def _eligibility(self, m: preprocess.BandMetrics, edges: dict | None = None) -> tuple[bool, str]:
+        if edges and (edges["top"] or edges["bottom"]):
+            return False, "word cut off, move it into the band"
+        if edges and (edges["left"] or edges["right"]):
+            return False, "word not fully inside band"
         if m.exposure < settings.exposure_min:
             return False, "too dark"
         if m.exposure > settings.exposure_max:
@@ -132,8 +138,8 @@ class CaptureController:
             return False, "blurry"
         return True, "ok"
 
-    def _step(self, gray: np.ndarray, m: preprocess.BandMetrics) -> None:
-        elig, why = self._eligibility(m)
+    def _step(self, gray: np.ndarray, m: preprocess.BandMetrics, edges: dict | None = None) -> None:
+        elig, why = self._eligibility(m, edges)
         self.eligible, self.eligibility_reason = elig, why
         now = time.time()
         st = self.state
@@ -236,6 +242,13 @@ class CaptureController:
             # 2. crop + preprocess (saved images are already crops if they are small)
             t0 = time.perf_counter()
             band = preprocess.band_crop(img, self.crop) if full_crop else img
+            edges = preprocess.ink_touches_edges(band) if full_crop else {}
+            if edges.get("top") or edges.get("bottom"):
+                trace["gate"] = {"accepted": False, "reason": "word_cut_off", "override": False}
+                trace.mark("decided"); self._publish(trace, None)
+                self.hint = "The word is cut off. Keep the whole word inside the band"
+                self._set_state("needs_recapture")
+                return
             ocr_in = preprocess.prepare_for_ocr(band)
             trace["timing_ms"]["preprocess"] = int((time.perf_counter() - t0) * 1000)
             if settings.debug_save_frames and ocr_in is not None:
@@ -249,6 +262,17 @@ class CaptureController:
             trace["timing_ms"]["ocr"] = result["latency_ms"]
             # 4. gate
             gate = evaluate(result, self.language, self.manifest, settings.ocr_confidence_threshold)
+            if gate.reason == "ok_generated" and full_crop:
+                # Unknown word: require a second, independent read (latest preview frame) to agree before teaching it.
+                jpg2, _ = self.camera.latest()
+                img2 = orient(decode_jpeg(jpg2), settings.camera_hmirror, settings.camera_vflip) if jpg2 else None
+                x2 = preprocess.prepare_for_ocr(preprocess.band_crop(img2, self.crop)) if img2 is not None else None
+                r2 = self.engine.recognize(x2, self.language) if x2 is not None else None  # type: ignore[union-attr]
+                second = normalize(r2["raw_text"]) if r2 else ""
+                trace["second_read"] = second
+                if second != gate.normalized:
+                    gate = GateDecision(False, "unstable_read", gate.normalized, gate.confidence, None,
+                                        hint="Two reads disagreed. Hold still and try again")
             trace["ocr"] = {"engine": result["engine"], "raw": result["raw_text"], "normalized": gate.normalized,
                             "confidence": gate.confidence, "candidates": result["candidates"]}
             trace["gate"] = gate.to_dict()

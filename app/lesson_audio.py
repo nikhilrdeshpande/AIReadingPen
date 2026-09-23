@@ -16,7 +16,7 @@ from . import sarvam
 from .config import settings
 from .manifest import Lesson
 
-SCRIPT_VERSION = "3"   # bump when the template changes so cached audio is rebuilt
+SCRIPT_VERSION = "4"   # bump when the template changes so cached audio is rebuilt
 
 
 @dataclass
@@ -26,17 +26,72 @@ class Segment:
     gap_ms: int = 450     # silence after this segment
 
 
+PACE = 0.8          # one pace for every segment so the run sounds like one speaker
+GAP = 400
+
+# Vowel-sign (matra) names as teachers say them. Marathi barakhadi names; Hindi "की मात्रा" names.
+MATRA_NAMES = {
+    "mr": {"\u093e": "काना", "\u093f": "पहिली वेलांटी", "\u0940": "दुसरी वेलांटी", "\u0941": "पहिला उकार",
+           "\u0942": "दुसरा उकार", "\u0943": "ऋकार", "\u0947": "एक मात्रा", "\u0948": "दोन मात्रा",
+           "\u094b": "काना एक मात्रा", "\u094c": "काना दोन मात्रा", "\u0902": "अनुस्वार", "\u0901": "चंद्रबिंदू", "\u0903": "विसर्ग"},
+    "hi": {"\u093e": "आ की मात्रा", "\u093f": "छोटी इ की मात्रा", "\u0940": "बड़ी ई की मात्रा", "\u0941": "छोटी उ की मात्रा",
+           "\u0942": "बड़ी ऊ की मात्रा", "\u0943": "ऋ की मात्रा", "\u0947": "ए की मात्रा", "\u0948": "ऐ की मात्रा",
+           "\u094b": "ओ की मात्रा", "\u094c": "औ की मात्रा", "\u0902": "अनुस्वार", "\u0901": "चंद्रबिंदु", "\u0903": "विसर्ग"},
+}
+
+
+def chunk_teaching_phrase(chunk: str, language: str) -> str | None:
+    """'झा' -> 'झ ला काना, झा' (mr) / 'झ में आ की मात्रा, झा' (hi). None when the chunk has no vowel sign
+    (bare consonant, conjunct without matra) so it is just spoken as itself."""
+    names = MATRA_NAMES[language]
+    marks = [ch for ch in chunk if ch in names]
+    if not marks:
+        return None
+    base = "".join(ch for ch in chunk if ch not in names)
+    if base.endswith("\u094d"):          # conjunct fragments: keep as unit
+        return None
+    joiner = " ला " if language == "mr" else " में "
+    return f"{base}{joiner}{' आणि '.join(names[m] for m in marks) if language == 'mr' else ' और '.join(names[m] for m in marks)}, {chunk}"
+
+
 def template_segments(lesson: Lesson) -> list[Segment]:
+    """Plain drill: word, each sound, blend, word, your turn."""
     mr = lesson.language == "mr"
     word, chunks = lesson.word, lesson.teaching_chunks
-    segs = [Segment(f"{word}.", 0.8, 600)]
+    segs = [Segment(f"{word}.", PACE, GAP + 150)]
     for c in chunks:
-        segs.append(Segment(f"{c}.", 0.65, 500))            # each sound alone, slowly
+        segs.append(Segment(f"{c}.", PACE, GAP))
     if len(chunks) > 1:
-        segs.append(Segment(", ".join(chunks) + ".", 0.7, 500))   # the blend, sounds run together
-    segs.append(Segment(f"{word}.", 0.8, 600))
-    segs.append(Segment("आता तू म्हण." if mr else "अब तुम बोलो.", 0.9, 0))   # your turn
+        segs.append(Segment(", ".join(chunks) + ".", PACE, GAP))
+    segs.append(Segment(f"{word}.", PACE, GAP + 150))
+    segs.append(Segment("आता तू म्हण." if mr else "अब तुम बोलो.", PACE, 0))
     return segs
+
+
+def barakhadi_segments(lesson: Lesson) -> list[Segment]:
+    """Traditional drill: word, then for each akshara 'झ ला काना, झा', the blend, word, your turn."""
+    mr = lesson.language == "mr"
+    word, chunks = lesson.word, lesson.teaching_chunks
+    segs = [Segment(f"{word}.", PACE, GAP + 150)]
+    for c in chunks:
+        phrase = chunk_teaching_phrase(c, lesson.language)
+        segs.append(Segment(f"{phrase}." if phrase else f"{c}.", PACE, GAP))
+    if len(chunks) > 1:
+        segs.append(Segment(", ".join(chunks) + ".", PACE, GAP))
+    segs.append(Segment(f"{word}.", PACE, GAP + 150))
+    segs.append(Segment("आता तू म्हण." if mr else "अब तुम बोलो.", PACE, 0))
+    return segs
+
+
+def _normalize_level(pcm: bytes, width: int, target_rms: float = 2500.0) -> bytes:
+    """Match loudness across segments so the run sounds like one continuous speaker."""
+    import numpy as np
+    a = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
+    rms = float(np.sqrt(np.mean(a * a))) if a.size else 0.0
+    if rms < 50:
+        return pcm
+    g = min(max(target_rms / rms, 0.5), 2.5)
+    return np.clip(a * g, -32768, 32767).astype(np.int16).tobytes()
 
 
 def llm_segments(lesson: Lesson, timeout: float = 25.0) -> list[Segment] | None:
@@ -83,7 +138,7 @@ def stitch(wavs: list[bytes], gaps_ms: list[int]) -> bytes:
                 rate, width, channels = p.framerate, p.sampwidth, p.nchannels
             elif (p.framerate, p.sampwidth, p.nchannels) != (rate, width, channels):
                 raise ValueError("segment format mismatch")
-            frames.append(f.readframes(p.nframes))
+            frames.append(_normalize_level(f.readframes(p.nframes), width))
         frames.append(_silence(gaps_ms[i], rate, width, channels))
     out = io.BytesIO()
     with wave.open(out, "wb") as f:
@@ -101,7 +156,8 @@ def cache_path(lesson: Lesson, segs: list[Segment], cache_dir: Path) -> Path:
 def build(lesson: Lesson, cache_dir: Path, use_llm: bool = False) -> tuple[Path, list[Segment]]:
     """Synthesize (or fetch from cache) the stitched lesson audio. Raises on provider failure."""
     cache_dir.mkdir(parents=True, exist_ok=True)
-    segs = (llm_segments(lesson) if use_llm else None) or template_segments(lesson)
+    segs = (llm_segments(lesson) if use_llm else None) or (
+        barakhadi_segments(lesson) if settings.lesson_style == "barakhadi" else template_segments(lesson))
     out = cache_path(lesson, segs, cache_dir)
     if out.exists():
         return out, segs

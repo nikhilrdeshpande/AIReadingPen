@@ -66,12 +66,12 @@ def test_gate_rejects_punctuation_extra_words_non_manifest(manifest, monkeypatch
     assert evaluate(_res("घर।"), "mr", manifest, 0.8).accepted           # outer punctuation is allowed normalization
     assert not evaluate(_res("घर झाड"), "mr", manifest, 0.8).accepted    # extra words
     assert not evaluate(_res("घरा"), "mr", manifest, 0.8).accepted       # near miss must NOT autocorrect
-    assert evaluate(_res("घरा"), "mr", manifest, 0.8).reason == "no_match"
+    assert evaluate(_res("घरा"), "mr", manifest, 0.8).reason == "near_miss"
     assert not evaluate(_res("किताब"), "mr", manifest, 0.8).accepted     # Hindi-only word under Marathi
-    # with open vocabulary on, a near miss is its own generated word, never silently mapped to घर
+    # with open vocabulary on, a near miss of a pack word is never mapped to घर and never taught as its own word
     monkeypatch.setattr(settings, "open_vocabulary", True)
     d = evaluate(_res("घरा", conf=0.99), "mr", manifest, 0.8)
-    assert d.lesson.review_status == "generated" and d.lesson.word == "घरा"
+    assert d.reason == "near_miss" and d.lesson is None
 
 
 def test_gate_low_confidence(manifest):
@@ -107,3 +107,22 @@ def test_open_vocabulary_generated_lesson(manifest, monkeypatch):
     assert evaluate(_res("घर झाड", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
     monkeypatch.setattr(settings, "open_vocabulary", False)
     assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
+
+
+def test_near_miss_of_pack_word_is_rejected_not_generated(manifest, monkeypatch):
+    monkeypatch.setattr(settings, "open_vocabulary", True)
+    monkeypatch.setattr(settings, "open_vocab_validate", False)
+    for frag in ("झड", "आड", "झा", "फुलपाखर", "कताब", "झाढ"):
+        d = evaluate(_res(frag, conf=0.99), "mr", manifest, 0.8)
+        assert d.reason == "near_miss" and d.lesson is None, frag
+    # a genuinely different word still generates
+    assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "ok_generated"
+
+
+def test_open_vocab_llm_validation_gate(manifest, monkeypatch):
+    import app.gate as gate
+    monkeypatch.setattr(settings, "open_vocabulary", True)
+    monkeypatch.setattr(settings, "open_vocab_validate", True)
+    monkeypatch.setattr(gate, "is_real_word", lambda lang, w: w != "घलठ")
+    assert evaluate(_res("घलठ", conf=0.99), "mr", manifest, 0.8).reason == "not_a_word"
+    assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "ok_generated"

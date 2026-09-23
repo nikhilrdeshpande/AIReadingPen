@@ -68,9 +68,9 @@ class Settings:
 
     # Target band as fractions of the preview frame
     crop_x: float = _f("CROP_X", 0.10)
-    crop_y: float = _f("CROP_Y", 0.36)
+    crop_y: float = _f("CROP_Y", 0.30)
     crop_w: float = _f("CROP_W", 0.80)
-    crop_h: float = _f("CROP_H", 0.28)
+    crop_h: float = _f("CROP_H", 0.40)
 
     # OCR
     ocr_engine: str = os.environ.get("OCR_ENGINE", "paddle")
@@ -78,6 +78,7 @@ class Settings:
     # Words outside the reviewed manifest: accepted only with a stricter confidence, chunks auto-generated and labelled.
     open_vocabulary: bool = _b("OPEN_VOCABULARY", True)
     open_vocab_confidence_threshold: float = _f("OPEN_VOCAB_CONFIDENCE_THRESHOLD", 0.90)
+    open_vocab_validate: bool = _b("OPEN_VOCAB_VALIDATE", True)   # ask Sarvam's LLM "is this a real word?" before generating
     tessdata_dir: str = os.environ.get("TESSDATA_DIR", str(ROOT / "models" / "tessdata"))
 
     # Content
@@ -89,6 +90,7 @@ class Settings:
     sarvam_api_key: str = os.environ.get("SARVAM_API_KEY", "")
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
     tts_timeout_s: float = _f("TTS_TIMEOUT_S", 4.0)
+    lesson_style: str = os.environ.get("LESSON_STYLE", "barakhadi")   # barakhadi ("झ ला काना, झा") or plain
     lesson_script_llm: bool = _b("LESSON_SCRIPT_LLM", False)   # ask Sarvam's LLM to write the teacher script (slow; generation time only)
 
     # "Your turn" practice step

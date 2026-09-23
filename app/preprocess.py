@@ -80,3 +80,16 @@ def prepare_for_ocr(band: np.ndarray, target_height: int = 96) -> np.ndarray | N
     if hi - lo > 20:
         g = np.clip((g.astype(np.float32) - lo) * (255.0 / (hi - lo)), 0, 255).astype(np.uint8)
     return cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
+
+
+
+def ink_touches_edges(band: np.ndarray, margin: int = 2) -> dict:
+    """Which band edges the ink touches. A word touching top/bottom is cut off by the band; left/right means
+    it is not fully inside. Used to refuse captures of partial words (the source of fragments like आड for झाड)."""
+    g = band if band.ndim == 2 else cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(g, (5, 5), 0)
+    _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    H, W = binary.shape
+    return {"top": bool(binary[:margin + 1].any()), "bottom": bool(binary[H - margin - 1:].any()),
+            "left": bool(binary[:, :margin + 1].any()), "right": bool(binary[:, W - margin - 1:].any())}
