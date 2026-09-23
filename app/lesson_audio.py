@@ -62,6 +62,13 @@ def template_segments(lesson: Lesson) -> list[Segment]:
     """Plain drill in four utterances: word | each sound, then the blend | word | your turn.
     The drill is one utterance with sentence breaks so the model keeps its natural prosody;
     single-syllable utterances sound synthetic."""
+    if lesson.parts:
+        segs = [Segment(f"{lesson.word}.", PACE, GAP)]
+        for part in lesson.parts:
+            sub = template_segments(part)
+            segs.append(Segment(sub[0].text, PACE, GAP - 150)); segs.append(Segment(sub[1].text, PACE, GAP))
+        segs.append(Segment(f"{lesson.word}.", PACE, GAP)); segs.append(Segment(_prompt(lesson.language), PACE, 0))
+        return segs
     word, chunks = lesson.word, lesson.teaching_chunks
     drill = " ".join(f"{c}।" for c in chunks) + (f" {', '.join(chunks)}।" if len(chunks) > 1 else "")
     return [Segment(f"{word}.", PACE, GAP), Segment(drill, PACE, GAP), Segment(f"{word}.", PACE, GAP),

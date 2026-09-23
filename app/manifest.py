@@ -23,6 +23,7 @@ class Lesson:
     audio_asset: str
     review_status: str
     card: str = ""
+    parts: list["Lesson"] | None = None    # a phrase lesson: one part per word
 
     @property
     def approved(self) -> bool:
@@ -34,6 +35,7 @@ class Lesson:
             "teaching_chunks": self.teaching_chunks, "lesson_class": self.lesson_class,
             "display_prompt": self.display_prompt, "speech_script": self.speech_script,
             "audio_asset": self.audio_asset, "review_status": self.review_status, "card": self.card,
+            "parts": [p.word for p in self.parts] if self.parts else None,
         }
 
 

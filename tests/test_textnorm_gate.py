@@ -63,8 +63,9 @@ def test_gate_accepts_exact_match(manifest):
 
 def test_gate_rejects_punctuation_extra_words_non_manifest(manifest, monkeypatch):
     monkeypatch.setattr(settings, "open_vocabulary", False)
+    monkeypatch.setattr(settings, "multi_word", False)
     assert evaluate(_res("घर।"), "mr", manifest, 0.8).accepted           # outer punctuation is allowed normalization
-    assert not evaluate(_res("घर झाड"), "mr", manifest, 0.8).accepted    # extra words
+    assert not evaluate(_res("घर झाड"), "mr", manifest, 0.8).accepted    # extra words (phrases off)
     assert not evaluate(_res("घरा"), "mr", manifest, 0.8).accepted       # near miss must NOT autocorrect
     assert evaluate(_res("घरा"), "mr", manifest, 0.8).reason == "near_miss"
     assert not evaluate(_res("किताब"), "mr", manifest, 0.8).accepted     # Hindi-only word under Marathi
@@ -104,7 +105,7 @@ def test_open_vocabulary_generated_lesson(manifest, monkeypatch):
     # stricter threshold than manifest words; non-Devanagari and multi-word never generate
     assert evaluate(_res("पुस्तक", conf=0.85), "mr", manifest, 0.8).reason == "no_match"
     assert evaluate(_res("hello", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
-    assert evaluate(_res("घर झाड", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
+    assert evaluate(_res("घर झाड", conf=0.99), "mr", manifest, 0.8).reason == "ok_phrase"
     monkeypatch.setattr(settings, "open_vocabulary", False)
     assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "no_match"
 
@@ -126,3 +127,16 @@ def test_open_vocab_llm_validation_gate(manifest, monkeypatch):
     monkeypatch.setattr(gate, "is_real_word", lambda lang, w: w != "घलठ")
     assert evaluate(_res("घलठ", conf=0.99), "mr", manifest, 0.8).reason == "not_a_word"
     assert evaluate(_res("पुस्तक", conf=0.99), "mr", manifest, 0.8).reason == "ok_generated"
+
+
+def test_phrase_of_pack_words(manifest, monkeypatch):
+    monkeypatch.setattr(settings, "multi_word", True)
+    monkeypatch.setattr(settings, "open_vocab_validate", False)
+    d = evaluate(_res("घर झाड", conf=0.95), "mr", manifest, 0.8)
+    assert d.accepted and d.reason == "ok_phrase" and [p.id for p in d.lesson.parts] == ["mr_ghar_v1", "mr_jhaad_v1"]
+    assert d.lesson.teaching_chunks == ["घ", "र", "झा", "ड"]
+    # one bad word fails the whole phrase, with the word named
+    d2 = evaluate(_res("घर झड", conf=0.95), "mr", manifest, 0.8)
+    assert not d2.accepted and "झड" in d2.hint
+    from app.lesson_audio import barakhadi_segments
+    assert [s.text for s in barakhadi_segments(d.lesson)][0] == "घर झाड."

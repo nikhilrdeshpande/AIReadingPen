@@ -40,9 +40,21 @@ def evaluate(result: OCRResult, language: str, manifest: Manifest, threshold: fl
     if not norm:
         return GateDecision(False, "no_text", norm, conf, None, hint="Show one word inside the band")
     lesson = manifest.lookup(language, norm)
-    if lesson is None:
-        if " " in norm:
+    if lesson is None and " " in norm:
+        words = norm.split()
+        if not settings.multi_word or len(words) > settings.multi_word_max:
             return GateDecision(False, "no_match", norm, conf, None, hint="Show one word inside the band")
+        parts = []
+        for w in words:
+            d = evaluate({"engine": result["engine"], "raw_text": w, "latency_ms": 0,
+                          "candidates": [{"text": w, "confidence": conf}]}, language, manifest, threshold)
+            if not d.accepted or d.lesson is None:
+                d.normalized = norm
+                d.hint = f"Could not read '{w}'. " + (d.hint or "")
+                return d
+            parts.append(d.lesson)
+        return GateDecision(True, "ok_phrase", norm, conf, phrase_lesson(language, parts))
+    if lesson is None:
         near = nearest_manifest_word(norm, manifest, language)
         if near is not None:
             # A fragment or one-mark miss of a pack word (झड / आड for झाड). Never autocorrect, never invent: ask again.
@@ -140,3 +152,13 @@ def is_real_word(language: str, word: str) -> bool:
         ok = True
     _word_cache[key] = ok
     return ok
+
+
+def phrase_lesson(language: str, parts: list[Lesson]) -> Lesson:
+    """Two or three words on one line: taught word by word, then the phrase. Never presented as reviewed."""
+    phrase = " ".join(p.word for p in parts)
+    chunks = [c for p in parts for c in p.teaching_chunks]
+    return Lesson(id=f"phrase_{language}_{hashlib.sha1(phrase.encode()).hexdigest()[:8]}", language=language,
+                  word=phrase, normalized=phrase, teaching_chunks=chunks, lesson_class="phrase",
+                  display_prompt="   ·   ".join(p.display_prompt for p in parts), speech_script=phrase,
+                  audio_asset="", review_status="generated", parts=parts)

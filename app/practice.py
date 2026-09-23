@@ -68,7 +68,7 @@ def compare(target: str, transcript: str) -> dict:
     t = _strip(target)
     heard = _strip(transcript)
     tokens = heard.split() if heard else []
-    if t in tokens or heard.replace(" ", "") == t:
+    if t in tokens or heard.replace(" ", "") == t.replace(" ", "") or (t in heard and " " in t):
         return {"match": True, "verdict": "correct", "score": 1.0, "heard": heard}
     best = max((SequenceMatcher(None, t, tok).ratio() for tok in tokens + [heard.replace(" ", "")]), default=0.0)
     return {"match": best >= 0.75, "verdict": "close" if best >= 0.75 else "try_again", "score": round(best, 2), "heard": heard}

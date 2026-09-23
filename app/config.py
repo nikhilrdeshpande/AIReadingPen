@@ -78,6 +78,8 @@ class Settings:
     # Words outside the reviewed manifest: accepted only with a stricter confidence, chunks auto-generated and labelled.
     open_vocabulary: bool = _b("OPEN_VOCABULARY", True)
     open_vocab_confidence_threshold: float = _f("OPEN_VOCAB_CONFIDENCE_THRESHOLD", 0.90)
+    multi_word: bool = _b("MULTI_WORD", True)             # accept 2-3 words on one line, each judged on its own
+    multi_word_max: int = _i("MULTI_WORD_MAX", 3)
     open_vocab_validate: bool = _b("OPEN_VOCAB_VALIDATE", True)   # ask Sarvam's LLM "is this a real word?" before generating
     tessdata_dir: str = os.environ.get("TESSDATA_DIR", str(ROOT / "models" / "tessdata"))
 
