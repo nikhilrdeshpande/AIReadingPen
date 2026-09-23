@@ -2,7 +2,10 @@
 
 Event prototype: a XIAO ESP32S3 Sense camera captures one printed Devanagari word, the Mac recognises it,
 a reviewed Marathi or Hindi lesson is selected, and cached audio teaches the blend. Specs, handoff and the
-event-day runbook are in `docs/`.
+event-day runbook are in `docs/`; they are the original brief and predate two later decisions made during the
+build: words outside the 24-card pack are taught with auto-generated, clearly labelled drills, and an optional
+"your turn" step records about three seconds of speech for transcription. That audio is held in memory only,
+sent to Sarvam for transcription, and never written to disk; traces keep the transcript text only.
 
 ## Quick start (Mac)
 
